@@ -1,0 +1,12 @@
+# created by virtualenv automatically
+# Virtual environment
+.venv/
+# PyInstaller artifacts
+build/
+dist/
+*.spec
+# Python cache
+__pycache__/
+*.py[cod]
+# IDE files
+.idea/
