@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QPushButton,  QVBoxLayout, QHBoxLayout, QTableView, QLabel
+from PySide6.QtWidgets import QPushButton,  QVBoxLayout, QHBoxLayout, QTableView, QLabel, QSizePolicy, QAbstractItemView
 from PySide6.QtCore import Qt
 
 
@@ -11,19 +11,68 @@ def build_ui():
 
     # -------------------------|defining buttons|------------------------- #
     new_deck_button = QPushButton("New deck")
-    new_deck_button.setStyleSheet("color: white; background-color: #3d99f5; font-size: 15px;")
+    new_deck_button.setStyleSheet("""
+        QPushButton {
+            color: white;
+            background-color: #1e5bbf;
+            font-size: 15px;
+        }
+        QPushButton:hover {
+            background-color: #5ab0ff;
+        }
+    """)
+
+    del_deck_button = QPushButton("Delete deck")
+    del_deck_button.setStyleSheet("""
+        QPushButton {
+            color: white;
+            background-color: #8b0000;
+            font-size: 15px;
+        }
+        QPushButton:hover {
+            background-color: #ff4d4d;
+        }
+    """)
 
     edit_deck = QPushButton("Edit deck")
-    edit_deck.setStyleSheet("color: white; background-color: #3d99f5; font-size: 15px;")
+    edit_deck.setStyleSheet("""
+        QPushButton {
+            color: white;
+            background-color: #1e5bbf;
+            font-size: 15px;
+        }
+        QPushButton:hover {
+            background-color: #5ab0ff;
+        }
+    """)
 
     add_card_to_deck = QPushButton("Add card to selected")
-    add_card_to_deck.setStyleSheet("color: white; background-color: #3d99f5; font-size: 15px;")
+    add_card_to_deck.setStyleSheet("""
+        QPushButton {
+            color: white;
+            background-color: #1e5bbf;
+            font-size: 15px;
+        }
+        QPushButton:hover {
+            background-color: #5ab0ff;
+        }
+    """)
 
     review_deck = QPushButton("Review Deck")
-    review_deck.setStyleSheet("color: white; background-color: #3d99f5; font-size: 15px;")
+    review_deck.setStyleSheet("""
+        QPushButton {
+            color: white;
+            background-color: #1e5bbf;
+            font-size: 15px;
+        }
+        QPushButton:hover {
+            background-color: #5ab0ff;
+        }
+    """)
 
     # -------------------------|adding buttons to layout|------------------------- #
     button_layout.addWidget(new_deck_button)
+    button_layout.addWidget(del_deck_button)
     button_layout.addWidget(edit_deck)
     button_layout.addWidget(add_card_to_deck)
     button_layout.addWidget(review_deck)
@@ -36,7 +85,10 @@ def build_ui():
     # -------------------------|defining and adding list widget to layout|------------------------- #
 
     deck_list = QTableView()
-    deck_list_layout.addWidget(deck_list)
+    deck_list.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    deck_list.setSelectionBehavior(QAbstractItemView.SelectRows)
+    deck_list.setSelectionMode(QAbstractItemView.SingleSelection)
+    deck_list_layout.addWidget(deck_list, stretch=1)
 
     # -------------------------|putting the layouts together and returning|------------------------- #
     master_layout.addLayout(label_layout)

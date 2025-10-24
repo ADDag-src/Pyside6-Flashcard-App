@@ -5,6 +5,8 @@
 build/
 dist/
 *.spec
+# app data
+data/
 # Python cache
 __pycache__/
 *.py[cod]
