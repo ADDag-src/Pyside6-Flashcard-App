@@ -58,6 +58,18 @@ def build_ui():
         }
     """)
 
+    learn_deck = QPushButton("Learn new cards")
+    learn_deck.setStyleSheet("""
+            QPushButton {
+                color: white;
+                background-color: #1e5bbf;
+                font-size: 15px;
+            }
+            QPushButton:hover {
+                background-color: #5ab0ff;
+            }
+        """)
+
     review_deck = QPushButton("Review Deck")
     review_deck.setStyleSheet("""
         QPushButton {
@@ -75,6 +87,7 @@ def build_ui():
     button_layout.addWidget(del_deck_button)
     button_layout.addWidget(edit_deck)
     button_layout.addWidget(add_card_to_deck)
+    button_layout.addWidget(learn_deck)
     button_layout.addWidget(review_deck)
 
     # -------------------------|defining and adding label widget to layout|------------------------- #
@@ -97,8 +110,10 @@ def build_ui():
 
     return master_layout, {
         "deck_list": deck_list,
+        "del_deck_button": del_deck_button,
         "new_deck": new_deck_button,
         "edit_deck": edit_deck,
         "add_card": add_card_to_deck,
+        "learn_deck": learn_deck,
         "review": review_deck
     }

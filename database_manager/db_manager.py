@@ -58,3 +58,9 @@ class DBManager:
     def get_all_decks(self):
         self.cursor.execute("SELECT * FROM decks ORDER BY name ASC")
         return self.cursor.fetchall()
+
+    def get_deck_id_by_name(self, name):
+        self.cursor.execute("SELECT id FROM decks WHERE name = ?", (name,))
+        result = self.cursor.fetchone()
+        if result:
+            return result[0]

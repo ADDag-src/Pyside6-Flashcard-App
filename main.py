@@ -22,6 +22,7 @@ class MainWindow(QMainWindow):
         # -------------------------|connect buttons functionality|------------------------- #
 
         widgets["new_deck"].clicked.connect(self.add_new_deck)
+        widgets["del_deck_button"].clicked.connect(self.del_deck)
 
         # -------------------------|main container definition|------------------------- #
         container = QWidget()
@@ -44,7 +45,26 @@ class MainWindow(QMainWindow):
 
     # -------------------------|delete deck method|------------------------- #
     def del_deck(self):
-        pass
+        selected_indexes = self.deck_list.selectionModel().selectedRows()
+        if not selected_indexes:
+            QMessageBox.information(self, "No Selection", "Please select a deck to delete.")
+            return
+        selected_row = selected_indexes[0].row()
+        deck_name = self.deck_list.model().item(selected_row, 0).text()
+        deck_id = self.database_manager.get_deck_id_by_name(deck_name)
+        if deck_id is None:
+            QMessageBox.warning(self, "Error", f"Deck '{deck_name}' not found in database.")
+            return
+        reply = QMessageBox.question(
+            self,
+            "Delete Deck",
+            f"Are you sure you want to delete the deck '{deck_name}'?\nAll associated cards will be removed.",
+            QMessageBox.Yes | QMessageBox.No,
+        )
+
+        if reply == QMessageBox.Yes:
+            self.database_manager.del_deck(deck_id)
+            self.refresh_deck_list()
 
     # -------------------------|refresh or populate deck method|------------------------- #
     def refresh_deck_list(self):
@@ -68,8 +88,8 @@ class MainWindow(QMainWindow):
                     model.setItem(row, col, item)
             self.deck_list.setModel(model)
         else:
-            model = QStandardItemModel(0, 5)
-            model.setHorizontalHeaderLabels(["Deck Name", "Created", "Total Cards", "Learning", "Due"])
+            model = QStandardItemModel(0, 4)
+            model.setHorizontalHeaderLabels(["Deck Name", "Total Cards", "Cards to learn", "Due"])
             self.deck_list.setModel(model)
 
 
