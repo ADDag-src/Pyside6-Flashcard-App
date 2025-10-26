@@ -3,6 +3,7 @@ from PySide6.QtGui import QStandardItemModel, QStandardItem
 from PySide6.QtCore import Qt
 from windows.mainwindow import build_ui
 from database_manager.db_manager import DBManager
+from windows.new_card_window import NewCardWindow
 
 
 class MainWindow(QMainWindow):
@@ -11,6 +12,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Flashcard App")
         self.setMinimumSize(800, 600)
         self.database_manager = DBManager()
+        self.new_card_window = None
 
         # -------------------------|building main window|------------------------- #
         layout, widgets = build_ui()
@@ -23,6 +25,7 @@ class MainWindow(QMainWindow):
 
         widgets["new_deck"].clicked.connect(self.add_new_deck)
         widgets["del_deck_button"].clicked.connect(self.del_deck)
+        widgets["add_card"].clicked.connect(self.add_cards_window)
 
         # -------------------------|main container definition|------------------------- #
         container = QWidget()
@@ -92,6 +95,20 @@ class MainWindow(QMainWindow):
             model.setHorizontalHeaderLabels(["Deck Name", "Total Cards", "Cards to learn", "Due"])
             self.deck_list.setModel(model)
 
+    def add_cards_window(self):
+        selected_indexes = self.deck_list.selectionModel().selectedRows()
+        if not selected_indexes:
+            QMessageBox.information(self, "No Selection", "Please select a deck to add cards to.")
+            return
+        selected_row = selected_indexes[0].row()
+        deck_name = self.deck_list.model().item(selected_row, 0).text()
+        deck_id = self.database_manager.get_deck_id_by_name(deck_name)
+
+        self.new_card_window = NewCardWindow(deck_name, deck_id, self.database_manager)
+
+        # -------------------------|signal that a card was added in the add card window|------------------------- #
+        self.new_card_window.card_added.connect(self.refresh_deck_list)
+        self.new_card_window.show()
 
 app = QApplication([])
 app.setStyle("Fusion")

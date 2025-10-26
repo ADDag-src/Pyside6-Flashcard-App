@@ -1,6 +1,6 @@
 import os
 import sqlite3
-
+from datetime import datetime
 
 class DBManager:
     def __init__(self):
@@ -23,7 +23,7 @@ class DBManager:
                 name TEXT NOT NULL,
                 created TEXT DEFAULT CURRENT_TIMESTAMP,
                 total_cards INTEGER NOT NULL DEFAULT 0,
-                learn_cards INTEGER NOT NULL DEFAULT 0,
+                new_cards INTEGER NOT NULL DEFAULT 0,
                 due_cards INTEGER NOT NULL DEFAULT 0
             )
         """)
@@ -64,3 +64,45 @@ class DBManager:
         result = self.cursor.fetchone()
         if result:
             return result[0]
+
+    def update_deck_stats(self, deck_id):
+        self.cursor.execute("SELECT status, next_review FROM cards WHERE deck_id = ?", (deck_id,))
+        results = self.cursor.fetchall()
+        total_cards = len(results)
+        new_cards = 0
+        due_cards = 0
+        now = datetime.now()
+
+        for status, next_review in results:
+            if status == "new":
+                new_cards += 1
+            if next_review:
+                try:
+                    review_time = datetime.fromisoformat(next_review)
+                    if review_time <= now:
+                        due_cards += 1
+                except ValueError:
+                    pass
+
+        self.cursor.execute(
+            """
+            UPDATE decks
+            SET total_cards = ?, new_cards = ?, due_cards = ?
+            WHERE id = ?
+            """,
+            (total_cards, new_cards, due_cards, deck_id)
+        )
+        self.connection.commit()
+
+    def add_card(self, deck_id, front, back, image_path):
+        now = datetime.now().isoformat()
+        self.cursor.execute(
+            """
+            INSERT INTO cards (deck_id, front, back, image_path, status, review_stage, next_review, created)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (deck_id, front, back, image_path, 'new', 0, None, now)
+        )
+        self.connection.commit()
+        self.update_deck_stats(deck_id)
+

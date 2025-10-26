@@ -46,7 +46,7 @@ def build_ui():
         }
     """)
 
-    add_card_to_deck = QPushButton("Add card to selected")
+    add_card_to_deck = QPushButton("Add card(s) to selected")
     add_card_to_deck.setStyleSheet("""
         QPushButton {
             color: white;
