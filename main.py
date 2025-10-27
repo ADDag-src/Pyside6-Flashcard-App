@@ -110,6 +110,7 @@ class MainWindow(QMainWindow):
         self.new_card_window.card_added.connect(self.refresh_deck_list)
         self.new_card_window.show()
 
+
 app = QApplication([])
 app.setStyle("Fusion")
 window = MainWindow()

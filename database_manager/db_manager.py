@@ -2,6 +2,7 @@ import os
 import sqlite3
 from datetime import datetime
 
+
 class DBManager:
     def __init__(self):
         base_dir = os.path.dirname(os.path.dirname(__file__))
@@ -13,6 +14,7 @@ class DBManager:
         self.db_path = os.path.join(data_dir, "flashcard_app.db")
         self.image_folder_path = image_folder_dir
         self.connection = sqlite3.connect(self.db_path)
+        self.connection.execute("PRAGMA foreign_keys = ON")
         self.cursor = self.connection.cursor()
         self.database_init()
 
