@@ -158,6 +158,8 @@ class NewCardWindow(QWidget):
         self.button_align_right.pressed.connect(self.alignment_clicked)
         self.button_align_center.pressed.connect(self.alignment_clicked)
         self.button_align_left.pressed.connect(self.alignment_clicked)
+        self.front_input.cursorPositionChanged.connect(lambda: self.reset_typing_format(self.front_input))
+        self.back_input.cursorPositionChanged.connect(lambda: self.reset_typing_format(self.back_input))
 
     def add_card(self):
         front = self.front_input.toPlainText().strip()
@@ -186,19 +188,19 @@ class NewCardWindow(QWidget):
         self.card_added.emit()
         self.close()
 
-    def font_selected(self,):
-        font = QFont(self.font_combobox.currentText())
+    def font_selected(self):
+        font_family = self.font_combobox.currentText()
+        font_format = QTextCharFormat()
+        font_format.setFontFamily(font_family)
+        font_format.setFontPointSize(float(self.font_size_combobox.currentText()))  # ensure size is preserved
+
         for editor in [self.front_input, self.back_input]:
             cursor = editor.textCursor()
-            if not cursor.hasSelection():
-                cursor.select(QTextCursor.Document)
-            current_size = editor.fontPointSize()
-            font_format = QTextCharFormat()
-            font_format.setFontFamily(font.family())
-            font_format.setFontPointSize(current_size)
-
-            cursor.mergeCharFormat(font_format)
-            editor.setTextCursor(cursor)
+            if cursor.hasSelection():
+                cursor.mergeCharFormat(font_format)
+                editor.setTextCursor(cursor)
+            else:
+                editor.setCurrentCharFormat(font_format)
 
     # ---------------|method to change font size to selected text, otherwise set new cursor size|---------------- #
     def font_size_changed(self, index):
@@ -227,18 +229,27 @@ class NewCardWindow(QWidget):
                 end = cursor.selectionEnd()
                 midpoint = start + (end - start) // 2
 
-                # Create a temp cursor at midpoint
                 temp_cursor = QTextCursor(editor.document())
                 temp_cursor.setPosition(midpoint)
                 mid_weight = temp_cursor.charFormat().fontWeight()
 
                 new_weight = QFont.Normal if mid_weight == QFont.Bold else QFont.Bold
-
                 bold_format = QTextCharFormat()
                 bold_format.setFontWeight(new_weight)
 
                 cursor.mergeCharFormat(bold_format)
                 editor.setTextCursor(cursor)
+
+                cursor.setPosition(end)
+                editor.setTextCursor(cursor)
+
+                # ---------------|reset cursor to not be bold anymore|---------------- #
+                reset_format = QTextCharFormat()
+                reset_format.setFontPointSize(editor.fontPointSize())
+                reset_format.setFontFamily(self.font_combobox.currentText())
+                reset_format.setFontWeight(QFont.Normal)
+
+                editor.setCurrentCharFormat(reset_format)
 
     def italics_clicked(self):
         for editor in [self.front_input, self.back_input]:
@@ -260,6 +271,17 @@ class NewCardWindow(QWidget):
                 cursor.mergeCharFormat(italic_format)
                 editor.setTextCursor(cursor)
 
+                cursor.setPosition(end)
+                editor.setTextCursor(cursor)
+
+                # ---------------|reset cursor to not be italic anymore|---------------- #
+                reset_format = QTextCharFormat()
+                reset_format.setFontPointSize(editor.fontPointSize())
+                reset_format.setFontFamily(self.font_combobox.currentText())
+                reset_format.setFontItalic(False)
+
+                editor.setCurrentCharFormat(reset_format)
+
     def underline_clicked(self):
         for editor in [self.front_input, self.back_input]:
             cursor = editor.textCursor()
@@ -280,27 +302,31 @@ class NewCardWindow(QWidget):
                 cursor.mergeCharFormat(underline_format)
                 editor.setTextCursor(cursor)
 
+                cursor.setPosition(end)
+                editor.setTextCursor(cursor)
+
+                # ---------------|reset cursor to not be underline anymore|---------------- #
+                reset_format = QTextCharFormat()
+                reset_format.setFontPointSize(editor.fontPointSize())
+                reset_format.setFontFamily(self.font_combobox.currentText())
+                reset_format.setFontUnderline(False)
+
+                editor.setCurrentCharFormat(reset_format)
+
     # -----------------|method to make sure font size setting stays even if all text is deleted|--------------------- #
     def handle_text_changed(self):
         size = float(self.font_size_combobox.currentText())
-        bold = self.button_bold.isChecked()
-        italic = self.button_italic.isChecked()
-        underline = self.button_underline.isChecked()
-
         text_format = QTextCharFormat()
         text_format.setFontPointSize(size)
-        if bold:
-            text_format.setFontWeight(QFont.Bold)
-        else:
-            text_format.setFontWeight(QFont.Normal)
-        text_format.setFontItalic(italic)
-        text_format.setFontUnderline(underline)
+        text_format.setFontFamily(self.font_combobox.currentText())
 
         for editor in [self.front_input, self.back_input]:
             if editor.toPlainText() == "":
-                editor.setCurrentCharFormat(text_format)
+                cursor = editor.textCursor()
+                cursor.setCharFormat(text_format)
+                editor.setTextCursor(cursor)
 
-    # ---------------| method that handles clearing of selected text |--------------- #
+    # ---------------| method that handles alignment buttons |--------------- #
     def alignment_clicked(self):
         clicked_button = self.sender()
         alignment = clicked_button.text()
@@ -330,3 +356,18 @@ class NewCardWindow(QWidget):
         if other_cursor.hasSelection():
             other_cursor.clearSelection()
             other_editor.setTextCursor(other_cursor)
+
+    # --------| method that resets the cursor if the user types after text that has a style applied|------------- #
+    def reset_typing_format(self, editor):
+        cursor = editor.textCursor()
+        if not cursor.hasSelection():
+            char_format = cursor.charFormat()
+            if char_format.fontWeight() == QFont.Bold or char_format.fontItalic() or char_format.fontUnderline():
+                clean_format = QTextCharFormat()
+                clean_format.setFontPointSize(float(self.font_size_combobox.currentText()))
+                clean_format.setFontFamily(self.font_combobox.currentText())
+                clean_format.setFontWeight(QFont.Normal)
+                clean_format.setFontItalic(False)
+                clean_format.setFontUnderline(False)
+
+                editor.setCurrentCharFormat(clean_format)
