@@ -1,22 +1,68 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QTextEdit, QComboBox, QSizePolicy,
                                QPushButton, QMessageBox, QHBoxLayout, QFontComboBox)
-from PySide6.QtGui import QFont, QTextCharFormat, QTextCursor
+from PySide6.QtGui import QFont, QTextCharFormat, QTextCursor, QImage
 from PySide6.QtCore import QTimer
 from PySide6.QtCore import Signal
 from PySide6.QtCore import Qt
+from datetime import datetime
+from urllib.parse import quote
+from pathlib import Path
+
+# FIX SQL SCHEMA TO HAVE A FRONT AND BACK IMAGE
+# LIMIT 1 IMAGE PER SIDE
+# IMPLEMENT ON SAVE IMAGES CORRECT IMAGE PATHS AFTER COPYING IMAGES TO IMAGE FOLDER
+# ADD SUPPORTED IMAGE TYPE AND INFO TO PLACEHOLDER TEXT
 
 
 # ----| QTextEdit subclass to ensure that selected text is cleared if clicking in another QTextEdit |---- #
+# ----| and custom behaviour to accept drag and drop images |---- #
 class FlashcardTextEdit(QTextEdit):
     def __init__(self, name, on_focus_callback, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
         self.on_focus_callback = on_focus_callback
+        self.setAcceptDrops(True)
+        self.pending_images = {}
 
+    # ----| method that is called when an editor is focused, and trigger callback |---- #
     def focusInEvent(self, event):
         super().focusInEvent(event)
         if self.on_focus_callback:
             self.on_focus_callback(self)
+
+    # ----| check if the file that is drag and dropped is a supported image |---- #
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            image_formats = ["png", "jpg", "jpeg", "gif", "bmp"]
+            for url in event.mimeData().urls():
+                image_url_ending = url.toLocalFile().split(".")[-1].lower()
+                if image_url_ending in image_formats:
+                    event.acceptProposedAction()
+                    return
+        event.ignore()
+
+    # ----| handle the image, save a temp QImage for later saving and display the image |---- #
+    def dropEvent(self, event):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                local_path = url.toLocalFile()
+                print(local_path)
+                image = QImage(local_path)
+                image_url = self.path_to_file_url(local_path)
+                if not image.isNull():
+                    placeholder = f"__img_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}__"
+                    self.pending_images[placeholder] = image
+                    self.insertHtml(f'<img src="{image_url}" />')
+                    print(self.pending_images)
+        else:
+            event.ignore()
+
+    # ----| fix a image's path to display correctly in the QTextEdit|---- #
+    @staticmethod
+    def path_to_file_url(path):
+        resolved = str(Path(path).resolve())
+        normalized = resolved.replace("\\", "/")
+        return f"file:///{quote(normalized)}"
 
 
 class NewCardWindow(QWidget):
@@ -141,9 +187,9 @@ class NewCardWindow(QWidget):
         self.add_button.clicked.connect(self.add_card)
         self.layout.addWidget(self.add_button)
 
-        self.done_button = QPushButton("Done")
-        self.done_button.clicked.connect(self.done_clicked)
-        self.layout.addWidget(self.done_button)
+        self.close_button = QPushButton("Close")
+        self.close_button.clicked.connect(self.close_clicked)
+        self.layout.addWidget(self.close_button)
 
         self.setLayout(self.layout)
 
@@ -184,10 +230,11 @@ class NewCardWindow(QWidget):
         self.front_input.setAlignment(Qt.AlignCenter)
         self.back_input.setAlignment(Qt.AlignCenter)
 
-    def done_clicked(self):
+    def close_clicked(self):
         self.card_added.emit()
         self.close()
 
+    # ---------------|method to change font to selected text, otherwise set new cursor font|---------------- #
     def font_selected(self):
         font_family = self.font_combobox.currentText()
         font_format = QTextCharFormat()
