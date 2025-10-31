@@ -8,7 +8,6 @@ from datetime import datetime
 from urllib.parse import quote
 from pathlib import Path
 
-# FIX SQL SCHEMA TO HAVE A FRONT AND BACK IMAGE
 # LIMIT 1 IMAGE PER SIDE
 # IMPLEMENT ON SAVE IMAGES CORRECT IMAGE PATHS AFTER COPYING IMAGES TO IMAGE FOLDER
 # ADD SUPPORTED IMAGE TYPE AND INFO TO PLACEHOLDER TEXT
@@ -33,7 +32,7 @@ class FlashcardTextEdit(QTextEdit):
     # ----| check if the file that is drag and dropped is a supported image |---- #
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
-            image_formats = ["png", "jpg", "jpeg", "gif", "bmp"]
+            image_formats = ["png", "jpg", "jpeg", "bmp"]
             for url in event.mimeData().urls():
                 image_url_ending = url.toLocalFile().split(".")[-1].lower()
                 if image_url_ending in image_formats:
@@ -87,6 +86,11 @@ class NewCardWindow(QWidget):
         self.font_text.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
         self.font_combobox = QFontComboBox()
+        self.font_combobox.setEditable(False)
+        self.font_combobox.setMaxVisibleItems(15)
+        #self.font_combobox.setMaximumWidth(200)
+        #self.font_combobox.setMaximumHeight(50)
+
 
         # -------------------------|combining font text and font selector|------------------------- #
         self.font_group = QWidget()
@@ -164,9 +168,12 @@ class NewCardWindow(QWidget):
         self.layout.addWidget(self.toolbar_container)
 
         self.front_input = FlashcardTextEdit("front", self.handle_focus_change)
-        self.front_input.setAlignment(Qt.AlignCenter)
+        # self.front_input.setAlignment(Qt.AlignCenter)
         self.front_input.setCurrentCharFormat(self.default_format)
-        self.front_input.setPlaceholderText("Front of the card")
+        self.front_input.setPlaceholderText("Front of the card."
+                                            " Supports drag and dropping images."
+                                            " One image per card side."
+                                            " Supported formats: .png, .jpg, .jpeg, .bmp")
 
         self.front_label = QLabel("Front")
         self.front_label.setContentsMargins(5, 0, 0, 0)
@@ -174,9 +181,12 @@ class NewCardWindow(QWidget):
         self.layout.addWidget(self.front_input)
 
         self.back_input = FlashcardTextEdit("back", self.handle_focus_change)
-        self.back_input.setAlignment(Qt.AlignCenter)
+        # self.back_input.setAlignment(Qt.AlignCenter)
         self.back_input.setCurrentCharFormat(self.default_format)
-        self.back_input.setPlaceholderText("Back of the card")
+        self.back_input.setPlaceholderText("Back of the card."
+                                           " Supports drag and dropping images."
+                                           " One image per card side."
+                                           " Supported formats: .png, .jpg, .jpeg, .bmp")
 
         self.back_label = QLabel("Back")
         self.back_label.setContentsMargins(5, 0, 0, 0)
