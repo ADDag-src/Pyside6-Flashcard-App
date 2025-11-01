@@ -7,10 +7,10 @@ from PySide6.QtCore import Qt
 from datetime import datetime
 from urllib.parse import quote
 from pathlib import Path
+import re
 
-# LIMIT 1 IMAGE PER SIDE
+
 # IMPLEMENT ON SAVE IMAGES CORRECT IMAGE PATHS AFTER COPYING IMAGES TO IMAGE FOLDER
-# ADD SUPPORTED IMAGE TYPE AND INFO TO PLACEHOLDER TEXT
 
 
 # ----| QTextEdit subclass to ensure that selected text is cleared if clicking in another QTextEdit |---- #
@@ -45,23 +45,65 @@ class FlashcardTextEdit(QTextEdit):
         if event.mimeData().hasUrls():
             for url in event.mimeData().urls():
                 local_path = url.toLocalFile()
-                print(local_path)
                 image = QImage(local_path)
                 image_url = self.path_to_file_url(local_path)
                 if not image.isNull():
-                    placeholder = f"__img_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}__"
-                    self.pending_images[placeholder] = image
-                    self.insertHtml(f'<img src="{image_url}" />')
-                    print(self.pending_images)
+                    if self.pending_images and self.has_image():
+                        reply = QMessageBox.question(
+                            self,
+                            "Replace Image?",
+                            "This card already has an image. Do you want to replace it?",
+                            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                        )
+                        if reply == QMessageBox.StandardButton.Yes:
+                            self.replace_image(image_url, image)
+                    else:
+                        cursor = self.textCursor()
+                        current_format = cursor.charFormat()
+
+                        placeholder = f"__img_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}__"
+                        self.pending_images[placeholder] = image
+                        self.insertHtml(f'<img src="{image_url}" /><br>&nbsp;')
+
+                        cursor = self.textCursor()
+                        cursor.setCharFormat(current_format)
+                        self.setTextCursor(cursor)
+                        self.setFocus()
+            event.acceptProposedAction()
         else:
             event.ignore()
 
-    # ----| fix a image's path to display correctly in the QTextEdit|---- #
+    # ----| fix an image's path to display correctly in the QTextEdit|---- #
     @staticmethod
     def path_to_file_url(path):
         resolved = str(Path(path).resolve())
         normalized = resolved.replace("\\", "/")
         return f"file:///{quote(normalized)}"
+
+    # ----| method to handle replacing images if a new one is added to same card|---- #
+    def replace_image(self, new_image_url, new_image_obj):
+        cursor = self.textCursor()
+        current_format = cursor.charFormat()
+
+        cursor.select(QTextCursor.SelectionType.Document)
+        all_html = cursor.selection().toHtml()
+
+        new_img_tag = f'<img src="{new_image_url}" /><br>&nbsp;'
+        altered_html = re.sub(r"<img[^>]*>", new_img_tag, all_html, flags=re.IGNORECASE)
+        self.setHtml(altered_html)
+
+        cursor = self.textCursor()
+        cursor.setCharFormat(current_format)
+        self.setTextCursor(cursor)
+        self.setFocus()
+
+        self.pending_images.clear()
+        placeholder = f"__img_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}__"
+        self.pending_images[placeholder] = new_image_obj
+
+    # ----| method to check if there's an image in the current html|---- #
+    def has_image(self):
+        return bool(re.search(r"<img[^>]*>", self.toHtml(), flags=re.IGNORECASE))
 
 
 class NewCardWindow(QWidget):
@@ -88,9 +130,6 @@ class NewCardWindow(QWidget):
         self.font_combobox = QFontComboBox()
         self.font_combobox.setEditable(False)
         self.font_combobox.setMaxVisibleItems(15)
-        #self.font_combobox.setMaximumWidth(200)
-        #self.font_combobox.setMaximumHeight(50)
-
 
         # -------------------------|combining font text and font selector|------------------------- #
         self.font_group = QWidget()
@@ -214,6 +253,8 @@ class NewCardWindow(QWidget):
         self.button_align_right.pressed.connect(self.alignment_clicked)
         self.button_align_center.pressed.connect(self.alignment_clicked)
         self.button_align_left.pressed.connect(self.alignment_clicked)
+
+        # -------------------------|connecting the method to apply the correct style|------------------------- #
         self.front_input.cursorPositionChanged.connect(lambda: self.reset_typing_format(self.front_input))
         self.back_input.cursorPositionChanged.connect(lambda: self.reset_typing_format(self.back_input))
 
@@ -419,12 +460,14 @@ class NewCardWindow(QWidget):
         cursor = editor.textCursor()
         if not cursor.hasSelection():
             char_format = cursor.charFormat()
+
+            clean_format = QTextCharFormat()
+            clean_format.setFontPointSize(float(self.font_size_combobox.currentText()))
+            clean_format.setFontFamily(self.font_combobox.currentText())
+
             if char_format.fontWeight() == QFont.Bold or char_format.fontItalic() or char_format.fontUnderline():
-                clean_format = QTextCharFormat()
-                clean_format.setFontPointSize(float(self.font_size_combobox.currentText()))
-                clean_format.setFontFamily(self.font_combobox.currentText())
                 clean_format.setFontWeight(QFont.Normal)
                 clean_format.setFontItalic(False)
                 clean_format.setFontUnderline(False)
 
-                editor.setCurrentCharFormat(clean_format)
+            editor.setCurrentCharFormat(clean_format)
