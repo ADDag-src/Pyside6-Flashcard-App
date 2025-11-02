@@ -36,8 +36,8 @@ class DBManager:
                 deck_id INTEGER NOT NULL,
                 front TEXT NOT NULL,
                 back TEXT NOT NULL,
-                front_image_path TEXT,
-                back_image_path TEXT,
+                front_image_filename TEXT,
+                back_image_filename  TEXT,
                 status TEXT NOT NULL DEFAULT 'new',
                 next_review TEXT,
                 review_stage INTEGER DEFAULT 0,
@@ -97,14 +97,14 @@ class DBManager:
         )
         self.connection.commit()
 
-    def add_card(self, deck_id, front, back, image_path):
+    def add_card(self, deck_id, front, back, front_image_filename=None, back_image_filename=None):
         now = datetime.now().isoformat()
         self.cursor.execute(
             """
-            INSERT INTO cards (deck_id, front, back, image_path, status, review_stage, next_review, created)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO cards (deck_id, front, back, front_image_filename, back_image_filename, status, review_stage, next_review, created)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (deck_id, front, back, image_path, 'new', 0, None, now)
+            (deck_id, front, back, front_image_filename, back_image_filename, 'new', 0, None, now)
         )
         self.connection.commit()
         self.update_deck_stats(deck_id)

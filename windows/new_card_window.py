@@ -10,9 +10,6 @@ from pathlib import Path
 import re
 
 
-# IMPLEMENT ON SAVE IMAGES CORRECT IMAGE PATHS AFTER COPYING IMAGES TO IMAGE FOLDER
-
-
 # ----| QTextEdit subclass to ensure that selected text is cleared if clicking in another QTextEdit |---- #
 # ----| and custom behaviour to accept drag and drop images |---- #
 class FlashcardTextEdit(QTextEdit):
@@ -22,6 +19,7 @@ class FlashcardTextEdit(QTextEdit):
         self.on_focus_callback = on_focus_callback
         self.setAcceptDrops(True)
         self.pending_images = {}
+        self.image_filename = None
 
     # ----| method that is called when an editor is focused, and trigger callback |---- #
     def focusInEvent(self, event):
@@ -104,6 +102,41 @@ class FlashcardTextEdit(QTextEdit):
     # ----| method to check if there's an image in the current html|---- #
     def has_image(self):
         return bool(re.search(r"<img[^>]*>", self.toHtml(), flags=re.IGNORECASE))
+
+    # ----| method to finalise card html and save images to save folder and reference those images in the html|---- #
+    def finalize_images(self, image_folder_path):
+        image_folder_path = Path(image_folder_path)
+        self.image_filename = None
+        if not self.pending_images:
+            return self.toHtml()
+
+        html = self.toHtml()
+        matches = re.findall(r'src="file:///([^"]+)"', html)
+
+        for placeholder, q_image in self.pending_images.items():
+            if not matches:
+                continue
+
+            matched_url = matches[0]
+
+            ext_match = re.search(r'\.([a-zA-Z0-9]+)$', matched_url)
+            ext = ext_match.group(1).lower() if ext_match else "png"
+
+            filename = f"{placeholder}.{ext}"
+            save_path = image_folder_path.joinpath(filename)
+            if not save_path.exists():
+                try:
+                    q_image.save(str(save_path), ext.upper())
+                    self.image_filename = filename
+                except Exception as e:
+                    print(f"Failed to save image {filename}: {e}")
+
+            full_src = f'src="file:///{matched_url}"'
+            new_src = f'src="images/{filename}"'
+            html = html.replace(full_src, new_src)
+
+        self.pending_images.clear()
+        return html
 
 
 class NewCardWindow(QWidget):
@@ -266,10 +299,15 @@ class NewCardWindow(QWidget):
             QMessageBox.warning(self, "Missing Fields", "Both front and back must be filled.")
             return
 
-        front_html = self.front_input.toHtml()
-        back_html = self.back_input.toHtml()
-        image_path = None
-        self.database_manager.add_card(self.deck_id, front_html, back_html, image_path)
+        image_path = self.database_manager.image_folder_path
+
+        front_html = self.front_input.finalize_images(image_path)
+        back_html = self.back_input.finalize_images(image_path)
+
+        front_image_path = self.front_input.image_filename if self.front_input.image_filename else None
+        back_image_path = self.back_input.image_filename if self.back_input.image_filename else None
+
+        self.database_manager.add_card(self.deck_id, front_html, back_html, front_image_path, back_image_path)
         self.status_label.setText("Card Added!")
         self.card_added.emit()
         QTimer.singleShot(1500, lambda: self.status_label.setText(f"Adding cards to deck: {self.deck_name}"))
@@ -278,8 +316,6 @@ class NewCardWindow(QWidget):
 
         self.front_input.setCurrentCharFormat(self.default_format)
         self.back_input.setCurrentCharFormat(self.default_format)
-        self.front_input.setAlignment(Qt.AlignCenter)
-        self.back_input.setAlignment(Qt.AlignCenter)
 
     def close_clicked(self):
         self.card_added.emit()
