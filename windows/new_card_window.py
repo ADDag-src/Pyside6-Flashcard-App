@@ -38,6 +38,15 @@ class FlashcardTextEdit(QTextEdit):
                     return
         event.ignore()
 
+    # ----| a method that fixes a bug when style isn't applied when
+    # user presses enter and the text styling resets when in new block |---- #
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            parent = self.window()
+            if parent and hasattr(parent, "reset_typing_format"):
+                parent.reset_typing_format(self)
+        super().keyPressEvent(event)
+
     # ----| handle the image, save a temp QImage for later saving and display the image |---- #
     def dropEvent(self, event):
         if event.mimeData().hasUrls():
@@ -339,8 +348,10 @@ class NewCardWindow(QWidget):
     # ---------------|method to change font size to selected text, otherwise set new cursor size|---------------- #
     def font_size_changed(self, index):
         size = float(self.font_size_combobox.itemText(index))
+        font_family = self.font_combobox.currentText()
         font_size_format = QTextCharFormat()
         font_size_format.setFontPointSize(size)
+        font_size_format.setFontFamily(font_family)
 
         any_selection = False
 
