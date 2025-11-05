@@ -4,6 +4,7 @@ from PySide6.QtCore import Qt
 from windows.mainwindow import build_ui
 from database_manager.db_manager import DBManager
 from windows.new_card_window import NewCardWindow
+from windows.edit_deck_window import EditDeckWindow
 
 
 class MainWindow(QMainWindow):
@@ -13,6 +14,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(800, 600)
         self.database_manager = DBManager()
         self.new_card_window = None
+        self.deck_edit_window = None
 
         # -------------------------|building main window|------------------------- #
         layout, widgets = build_ui()
@@ -26,6 +28,7 @@ class MainWindow(QMainWindow):
         widgets["new_deck"].clicked.connect(self.add_new_deck)
         widgets["del_deck_button"].clicked.connect(self.del_deck)
         widgets["add_card"].clicked.connect(self.add_cards_window)
+        widgets["edit_deck"].clicked.connect(self.edit_deck_window)
 
         # -------------------------|main container definition|------------------------- #
         container = QWidget()
@@ -95,20 +98,33 @@ class MainWindow(QMainWindow):
             model.setHorizontalHeaderLabels(["Deck Name", "Total Cards", "Cards to learn", "Due"])
             self.deck_list.setModel(model)
 
-    def add_cards_window(self):
+    def get_selected_deck(self):
         selected_indexes = self.deck_list.selectionModel().selectedRows()
         if not selected_indexes:
-            QMessageBox.information(self, "No Selection", "Please select a deck to add cards to.")
+            QMessageBox.information(self, "No Selection", "Please select a deck to perform the action on.")
             return
         selected_row = selected_indexes[0].row()
         deck_name = self.deck_list.model().item(selected_row, 0).text()
         deck_id = self.database_manager.get_deck_id_by_name(deck_name)
+        return deck_name, deck_id
 
-        self.new_card_window = NewCardWindow(deck_name, deck_id, self.database_manager)
+    def add_cards_window(self):
+        deck_details = self.get_selected_deck()
+        if not deck_details:
+            return
+
+        self.new_card_window = NewCardWindow(deck_details[0], deck_details[1], self.database_manager)
 
         # -------------------------|signal that a card was added in the add card window|------------------------- #
         self.new_card_window.card_added.connect(self.refresh_deck_list)
         self.new_card_window.show()
+
+    def edit_deck_window(self):
+        deck_details = self.get_selected_deck()
+        if not deck_details:
+            return
+        self.deck_edit_window = EditDeckWindow(deck_details[0], deck_details[1], self.database_manager)
+        self.deck_edit_window.show()
 
 
 app = QApplication([])

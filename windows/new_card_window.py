@@ -287,14 +287,14 @@ class NewCardWindow(QWidget):
         # -------------------------|connecting the font controls|------------------------- #
         self.font_combobox.activated.connect(self.font_selected)
         self.font_size_combobox.activated.connect(self.font_size_changed)
-        self.button_bold.pressed.connect(self.bold_clicked)
-        self.button_italic.pressed.connect(self.italics_clicked)
-        self.button_underline.pressed.connect(self.underline_clicked)
+        self.button_bold.clicked.connect(self.bold_clicked)
+        self.button_italic.clicked.connect(self.italics_clicked)
+        self.button_underline.clicked.connect(self.underline_clicked)
         self.front_input.textChanged.connect(self.handle_text_changed)
         self.back_input.textChanged.connect(self.handle_text_changed)
-        self.button_align_right.pressed.connect(self.alignment_clicked)
-        self.button_align_center.pressed.connect(self.alignment_clicked)
-        self.button_align_left.pressed.connect(self.alignment_clicked)
+        self.button_align_right.clicked.connect(self.alignment_clicked)
+        self.button_align_center.clicked.connect(self.alignment_clicked)
+        self.button_align_left.clicked.connect(self.alignment_clicked)
 
         # -------------------------|connecting the method to apply the correct style|------------------------- #
         self.front_input.cursorPositionChanged.connect(lambda: self.reset_typing_format(self.front_input))

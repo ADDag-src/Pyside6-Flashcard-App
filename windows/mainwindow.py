@@ -83,12 +83,19 @@ def build_ui():
     """)
 
     # -------------------------|adding buttons to layout|------------------------- #
+    button_layout.addStretch()
     button_layout.addWidget(new_deck_button)
+    button_layout.addSpacing(10)
     button_layout.addWidget(del_deck_button)
+    button_layout.addSpacing(10)
     button_layout.addWidget(edit_deck)
+    button_layout.addSpacing(10)
     button_layout.addWidget(add_card_to_deck)
+    button_layout.addSpacing(10)
     button_layout.addWidget(learn_deck)
+    button_layout.addSpacing(10)
     button_layout.addWidget(review_deck)
+    button_layout.addStretch()
 
     # -------------------------|defining and adding label widget to layout|------------------------- #
     deck_list_label = QLabel("Deck List")
