@@ -109,3 +109,6 @@ class DBManager:
         self.connection.commit()
         self.update_deck_stats(deck_id)
 
+    def rename_deck(self, new_name, deck_id):
+        self.cursor.execute("UPDATE decks SET name = ? WHERE id = ?", (new_name, deck_id))
+        self.connection.commit()

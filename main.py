@@ -40,14 +40,19 @@ class MainWindow(QMainWindow):
         name, ok = QInputDialog.getText(self, "New Deck", "Enter deck name:")
         name = name.strip()
 
-        if ok and 0 < len(name) < 50:
-            if not self.database_manager.check_existing(name):
-                self.database_manager.add_deck(name)
-                self.refresh_deck_list()
-            else:
-                QMessageBox.warning(self, "Invalid Name", "A deck with that name already exists in the database.")
-        elif ok:
+        if not ok:
+            return
+
+        if not (0 < len(name) < 50):
             QMessageBox.warning(self, "Invalid Name", "Deck name cannot be empty or longer than 50 characters.")
+            return
+
+        if self.database_manager.check_existing(name):
+            QMessageBox.warning(self, "Invalid Name", "A deck with that name already exists in the database.")
+            return
+
+        self.database_manager.add_deck(name)
+        self.refresh_deck_list()
 
     # -------------------------|delete deck method|------------------------- #
     def del_deck(self):
@@ -123,7 +128,11 @@ class MainWindow(QMainWindow):
         deck_details = self.get_selected_deck()
         if not deck_details:
             return
+
         self.deck_edit_window = EditDeckWindow(deck_details[0], deck_details[1], self.database_manager)
+
+        # -------------------------|signal that an edit happened in deck edit window|------------------------- #
+        self.deck_edit_window.deck_edited.connect(self.refresh_deck_list)
         self.deck_edit_window.show()
 
 

@@ -1,9 +1,7 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QTextEdit, QComboBox, QSizePolicy,
                                QPushButton, QMessageBox, QHBoxLayout, QFontComboBox)
 from PySide6.QtGui import QFont, QTextCharFormat, QTextCursor, QImage
-from PySide6.QtCore import QTimer
-from PySide6.QtCore import Signal
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer, Signal
 from datetime import datetime
 from urllib.parse import quote
 from pathlib import Path

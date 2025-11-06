@@ -1,9 +1,12 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QSizePolicy, QPushButton, QMessageBox,
-                               QHBoxLayout, QTableView, QAbstractItemView)
-from PySide6.QtCore import Qt
+                               QHBoxLayout, QTableView, QAbstractItemView, QInputDialog)
+from PySide6.QtCore import Qt, Signal
 
 
 class EditDeckWindow(QWidget):
+    # ---------------| Custom signal to update list in main window |--------------- #
+    deck_edited = Signal()
+
     def __init__(self, deck_name, deck_id, database_manager):
         super().__init__()
         self.deck_id = deck_id
@@ -96,6 +99,32 @@ class EditDeckWindow(QWidget):
 
     # -------------------------|button connections|------------------------- #
         self.close_button.clicked.connect(self.close_clicked)
+        self.rename_deck_button.clicked.connect(self.rename_deck)
 
     def close_clicked(self):
+        self.deck_edited.emit()
         self.close()
+
+    def rename_deck(self):
+        name, ok = QInputDialog.getText(self, "Rename Deck", "Enter new deck name:")
+        name = name.strip()
+
+        if not ok:
+            return
+
+        if not (0 < len(name) < 50):
+            QMessageBox.warning(self, "Invalid Name", "Deck name cannot be empty or longer than 50 characters.")
+            return
+
+        if name == self.deck_name:
+            QMessageBox.information(self, "No Change", "The new name is the same as the current name.")
+            return
+
+        if self.database_manager.check_existing(name):
+            QMessageBox.warning(self, "Invalid Name", "A deck with that name already exists in the database.")
+            return
+
+        self.database_manager.rename_deck(name, self.deck_id)
+        self.deck_name = name
+        self.deck_name_label.setText(f"Editing deck: {self.deck_name}")
+        self.deck_edited.emit()
