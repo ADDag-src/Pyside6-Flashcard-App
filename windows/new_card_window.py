@@ -247,7 +247,6 @@ class NewCardWindow(QWidget):
         self.layout.addWidget(self.toolbar_container)
 
         self.front_input = FlashcardTextEdit("front", self.handle_focus_change)
-        # self.front_input.setAlignment(Qt.AlignCenter)
         self.front_input.setCurrentCharFormat(self.default_format)
         self.front_input.setPlaceholderText("Front of the card."
                                             " Supports drag and dropping images."
@@ -260,7 +259,6 @@ class NewCardWindow(QWidget):
         self.layout.addWidget(self.front_input)
 
         self.back_input = FlashcardTextEdit("back", self.handle_focus_change)
-        # self.back_input.setAlignment(Qt.AlignCenter)
         self.back_input.setCurrentCharFormat(self.default_format)
         self.back_input.setPlaceholderText("Back of the card."
                                            " Supports drag and dropping images."

@@ -96,6 +96,7 @@ class MainWindow(QMainWindow):
                 ]
                 for col, item in enumerate(items):
                     item.setTextAlignment(Qt.AlignCenter)
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                     model.setItem(row, col, item)
             self.deck_list.setModel(model)
         else:

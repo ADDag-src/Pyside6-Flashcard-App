@@ -112,3 +112,7 @@ class DBManager:
     def rename_deck(self, new_name, deck_id):
         self.cursor.execute("UPDATE decks SET name = ? WHERE id = ?", (new_name, deck_id))
         self.connection.commit()
+
+    def get_deck_cards(self, deck_id):
+        self.cursor.execute("SELECT id, front, back, created FROM cards WHERE deck_id = ?", (deck_id,))
+        return self.cursor.fetchall()
