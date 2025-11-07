@@ -1,8 +1,11 @@
 from PySide6.QtGui import QStandardItemModel, QStandardItem, QTextDocument
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QSizePolicy, QPushButton, QMessageBox,
-                               QHBoxLayout, QTableView, QAbstractItemView, QInputDialog, QHeaderView)
-from PySide6.QtCore import Qt, Signal, QTimer
+                               QHBoxLayout, QTableView, QAbstractItemView, QInputDialog, QHeaderView, QDialog,
+                               QTextBrowser)
+from PySide6.QtCore import Qt, Signal, QTimer, QModelIndex, QUrl
 from datetime import datetime
+import re
+import os
 
 
 class EditDeckWindow(QWidget):
@@ -37,7 +40,7 @@ class EditDeckWindow(QWidget):
         # -------------------------|card list setup|------------------------- #
         self.card_list = QTableView()
         self.card_list.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.card_list.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.card_list.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.card_list.setSelectionMode(QAbstractItemView.SingleSelection)
 
         self.card_list.setStyleSheet("""
@@ -120,11 +123,16 @@ class EditDeckWindow(QWidget):
         self.rename_deck_button.clicked.connect(self.rename_deck)
         self.del_card_button.clicked.connect(self.delete_cards)
 
+    # -------------------------|cell click connection|------------------------- #
+        self.card_list.clicked.connect(self.cell_click_handler)
+
     @staticmethod
     def html_to_plaintext(html_string):
+        html_string = re.sub(r"<img[^>]*>", "Image detected — click cell for preview", html_string, flags=re.IGNORECASE)
         doc = QTextDocument()
         doc.setHtml(html_string)
-        return doc.toPlainText()
+        plain = doc.toPlainText()
+        return plain.replace("\u00A0", " ").replace("\n", " ").strip()
 
     def close_clicked(self):
         self.deck_edited.emit()
@@ -155,7 +163,7 @@ class EditDeckWindow(QWidget):
         self.deck_edited.emit()
         QTimer.singleShot(1500, lambda: self.deck_name_label.setText(f"Editing deck: {self.deck_name}"))
 
-    # -------------------------|refresh or populate card list|------------------------- #
+    # -------------------------|method to refresh or populate card list|------------------------- #
     def refresh_card_list(self):
         cards = self.database_manager.get_deck_cards(self.deck_id)
         header = self.card_list.horizontalHeader()
@@ -165,7 +173,7 @@ class EditDeckWindow(QWidget):
         if cards:
             model = QStandardItemModel(len(cards), 4)
             model.setHorizontalHeaderLabels(["Select", "Front", "Back", "Created"])
-            for row, (card_id, front, back, created) in enumerate(cards):
+            for row, (card_id, front, back, front_img, back_img, created) in enumerate(cards):
 
                 checkbox_item = QStandardItem(" ")
                 checkbox_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
@@ -174,12 +182,23 @@ class EditDeckWindow(QWidget):
 
                 front_text = self.html_to_plaintext(front)
                 back_text = self.html_to_plaintext(back)
+
+                front_item = QStandardItem(front_text)
+                front_item.setToolTip("Click to preview front side")
+                front_item.setData(front, Qt.UserRole + 1)
+                front_item.setData(front_img, Qt.UserRole + 2)
+
+                back_item = QStandardItem(back_text)
+                back_item.setToolTip("Click to preview back side")
+                back_item.setData(back, Qt.UserRole + 1)
+                back_item.setData(back_img, Qt.UserRole + 2)
+
                 creation_dt = datetime.strptime(created, "%Y-%m-%dT%H:%M:%S.%f")
                 formatted_time = creation_dt.strftime("%b %d, %Y %H:%M")
                 items = [
                     checkbox_item,
-                    QStandardItem(front_text),
-                    QStandardItem(back_text),
+                    front_item,
+                    back_item,
                     QStandardItem(formatted_time),
                 ]
                 for col, item in enumerate(items):
@@ -200,3 +219,34 @@ class EditDeckWindow(QWidget):
 
     def delete_cards(self):
         pass
+
+    # -------------------------|method to handle cell preview, when clicked|------------------------- #
+    def cell_click_handler(self, index: QModelIndex):
+        item = self.card_list.model().itemFromIndex(index)
+        html = item.data(Qt.UserRole + 1)
+        image_filename = item.data(Qt.UserRole + 2)
+
+        if not html:
+            return
+
+        if image_filename:
+            image_path = os.path.join(self.database_manager.image_folder_path, image_filename)
+            if os.path.exists(image_path):
+                image_url = QUrl.fromLocalFile(image_path).toString()
+                html = html.replace(image_filename, image_url)
+            else:
+                html += f"<p><i>Image file '{image_filename}' not found</i></p>"
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Card Preview")
+        dialog.setWindowFlags(Qt.Window | Qt.WindowMinMaxButtonsHint | Qt.WindowCloseButtonHint)
+        layout = QVBoxLayout(dialog)
+
+        viewer = QTextBrowser()
+        viewer.setHtml(html)
+        viewer.setOpenExternalLinks(True)
+        layout.addWidget(viewer)
+
+        dialog.setLayout(layout)
+        dialog.resize(500, 400)
+        dialog.exec()

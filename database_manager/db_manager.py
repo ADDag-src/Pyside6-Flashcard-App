@@ -114,5 +114,5 @@ class DBManager:
         self.connection.commit()
 
     def get_deck_cards(self, deck_id):
-        self.cursor.execute("SELECT id, front, back, created FROM cards WHERE deck_id = ?", (deck_id,))
+        self.cursor.execute("SELECT id, front, back, front_image_filename, back_image_filename, created FROM cards WHERE deck_id = ?", (deck_id,))
         return self.cursor.fetchall()

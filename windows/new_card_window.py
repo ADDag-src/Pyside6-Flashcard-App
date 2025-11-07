@@ -139,7 +139,7 @@ class FlashcardTextEdit(QTextEdit):
                     print(f"Failed to save image {filename}: {e}")
 
             full_src = f'src="file:///{matched_url}"'
-            new_src = f'src="images/{filename}"'
+            new_src = f'src="{filename}"'
             html = html.replace(full_src, new_src)
 
         self.pending_images.clear()
