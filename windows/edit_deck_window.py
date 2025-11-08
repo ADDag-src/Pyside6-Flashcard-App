@@ -212,17 +212,45 @@ class EditDeckWindow(QWidget):
 
         self.card_list.setModel(model)
 
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Checkbox column
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.Stretch)
         header.setSectionResizeMode(2, QHeaderView.Stretch)
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
 
+    # -------------------------|method to delete cards|------------------------- #
     def delete_cards(self):
-        pass
+        model = self.card_list.model()
+        card_ids_to_delete = []
+
+        for row in range(model.rowCount()):
+            current_checkbox = model.item(row, 0)  # type: ignore
+            if current_checkbox.checkState() == Qt.Checked:
+                card_id = current_checkbox.data(Qt.UserRole)
+                if card_id:
+                    card_ids_to_delete.append(card_id)
+
+        if not card_ids_to_delete:
+            QMessageBox.information(self, "Delete Cards", "No cards selected for deletion.")
+            return
+
+        reply = QMessageBox.question(
+            self,
+            "Confirm Deletion",
+            f"Delete {len(card_ids_to_delete)} selected card(s)?\n !This can not be undone!",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+
+        if reply == QMessageBox.Yes:
+            self.database_manager.delete_cards(self.deck_id, card_ids_to_delete)
+            self.refresh_card_list()
+            self.deck_name_label.setText("Cards deleted!")
+            self.deck_edited.emit()
+            QTimer.singleShot(1500, lambda: self.deck_name_label.setText(f"Editing deck: {self.deck_name}"))
 
     # -------------------------|method to handle cell preview, when clicked|------------------------- #
     def cell_click_handler(self, index: QModelIndex):
-        item = self.card_list.model().itemFromIndex(index)
+        item = self.card_list.model().itemFromIndex(index)  # type: ignore
         html = item.data(Qt.UserRole + 1)
         image_filename = item.data(Qt.UserRole + 2)
 

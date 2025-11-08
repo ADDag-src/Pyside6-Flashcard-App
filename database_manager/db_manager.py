@@ -116,3 +116,10 @@ class DBManager:
     def get_deck_cards(self, deck_id):
         self.cursor.execute("SELECT id, front, back, front_image_filename, back_image_filename, created FROM cards WHERE deck_id = ?", (deck_id,))
         return self.cursor.fetchall()
+
+    def delete_cards(self, deck_id, card_ids):
+        if not card_ids:
+            return
+        self.cursor.executemany("DELETE FROM cards where id=?", [(card_id,) for card_id in card_ids])
+        self.connection.commit()
+        self.update_deck_stats(deck_id)
