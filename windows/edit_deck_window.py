@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt, Signal, QTimer, QModelIndex, QUrl
 from datetime import datetime
 import re
 import os
+from windows.card_editor_window import CardEditorWindow
 
 
 class EditDeckWindow(QWidget):
@@ -16,6 +17,7 @@ class EditDeckWindow(QWidget):
         super().__init__()
         self.deck_id = deck_id
         self.deck_name = deck_name
+        self.editor = None
         self.database_manager = database_manager
         self.setWindowTitle("Edit a deck")
         self.setMinimumSize(805, 550)
@@ -97,6 +99,22 @@ class EditDeckWindow(QWidget):
         self.button_layout.addWidget(self.del_card_button)
         self.button_layout.addSpacing(20)
 
+        # -------------------------|edit button|------------------------- #
+        self.edit_button = QPushButton("Edit selected card")
+        self.edit_button.setMaximumWidth(200)
+        self.edit_button.setStyleSheet("""
+                               QPushButton {
+                                   color: white;
+                                   background-color: #1e5bbf;
+                                   font-size: 15px;
+                               }
+                               QPushButton:hover {
+                                   background-color: #5ab0ff;
+                               }
+                           """)
+        self.button_layout.addWidget(self.edit_button)
+        self.button_layout.addSpacing(20)
+
         # -------------------------|close button|------------------------- #
         self.close_button = QPushButton("Close")
         self.close_button.setMaximumWidth(200)
@@ -122,6 +140,7 @@ class EditDeckWindow(QWidget):
         self.close_button.clicked.connect(self.close_clicked)
         self.rename_deck_button.clicked.connect(self.rename_deck)
         self.del_card_button.clicked.connect(self.delete_cards)
+        self.edit_button.clicked.connect(self.edit_clicked)
 
     # -------------------------|cell click connection|------------------------- #
         self.card_list.clicked.connect(self.cell_click_handler)
@@ -205,13 +224,11 @@ class EditDeckWindow(QWidget):
                     item.setTextAlignment(Qt.AlignCenter)
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                     model.setItem(row, col, item)
-
         else:
             model = QStandardItemModel(0, 4)
             model.setHorizontalHeaderLabels(["Select", "Front", "Back", "Created"])
 
         self.card_list.setModel(model)
-
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.Stretch)
         header.setSectionResizeMode(2, QHeaderView.Stretch)
@@ -278,3 +295,49 @@ class EditDeckWindow(QWidget):
         dialog.setLayout(layout)
         dialog.resize(500, 400)
         dialog.exec()
+
+    def edit_clicked(self):
+        model = self.card_list.model()
+        selected_card_ids = []
+
+        for row in range(model.rowCount()):
+            checkbox_item = model.item(row, 0)  # type: ignore
+            if checkbox_item.checkState() == Qt.Checked:
+                card_id = checkbox_item.data(Qt.UserRole)
+                if card_id:
+                    selected_card_ids.append(row)
+
+        if not selected_card_ids:
+            QMessageBox.warning(self, "No Selection", "Please check a card to edit.")
+            return
+
+        if len(selected_card_ids) > 1:
+            QMessageBox.information(self, "Multiple Selection", "Please select only one card to edit at a time.")
+            return
+
+        row = selected_card_ids[0]
+
+        card_id_item = model.item(row, 0)  # type: ignore
+        card_id = card_id_item.data(Qt.UserRole)
+
+        front_item = model.item(row, 1)  # type: ignore
+        back_item = model.item(row, 2)   # type: ignore
+
+        front_html = front_item.data(Qt.UserRole + 1)
+        front_image = front_item.data(Qt.UserRole + 2)
+
+        back_html = back_item.data(Qt.UserRole + 1)
+        back_image = back_item.data(Qt.UserRole + 2)
+
+        editor = CardEditorWindow(
+            self.deck_name,
+            self.deck_id,
+            self.database_manager,
+            card_id=card_id,
+            front_html=front_html,
+            back_html=back_html,
+            front_image=front_image,
+            back_image=back_image
+        )
+        editor.card_edited.connect(self.refresh_card_list)
+        editor.show()

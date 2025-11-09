@@ -3,7 +3,7 @@ from PySide6.QtGui import QStandardItemModel, QStandardItem
 from PySide6.QtCore import Qt
 from windows.mainwindow import build_ui
 from database_manager.db_manager import DBManager
-from windows.new_card_window import NewCardWindow
+from windows.card_editor_window import CardEditorWindow
 from windows.edit_deck_window import EditDeckWindow
 
 
@@ -119,7 +119,7 @@ class MainWindow(QMainWindow):
         if not deck_details:
             return
 
-        self.new_card_window = NewCardWindow(deck_details[0], deck_details[1], self.database_manager)
+        self.new_card_window = CardEditorWindow(deck_details[0], deck_details[1], self.database_manager)
 
         # -------------------------|signal that a card was added in the add card window|------------------------- #
         self.new_card_window.card_added.connect(self.refresh_deck_list)

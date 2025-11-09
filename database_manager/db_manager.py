@@ -123,3 +123,14 @@ class DBManager:
         self.cursor.executemany("DELETE FROM cards where id=?", [(card_id,) for card_id in card_ids])
         self.connection.commit()
         self.update_deck_stats(deck_id)
+
+    def update_card(self, card_id, front, back, front_image_filename=None, back_image_filename=None):
+        self.cursor.execute(
+            """
+            UPDATE cards
+            SET front = ?, back = ?, front_image_filename = ?, back_image_filename = ?
+            WHERE id = ?
+            """,
+            (front, back, front_image_filename, back_image_filename, card_id)
+        )
+        self.connection.commit()

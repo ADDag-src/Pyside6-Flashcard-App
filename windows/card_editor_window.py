@@ -1,7 +1,8 @@
+import os
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QTextEdit, QComboBox, QSizePolicy,
                                QPushButton, QMessageBox, QHBoxLayout, QFontComboBox)
 from PySide6.QtGui import QFont, QTextCharFormat, QTextCursor, QImage
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import Qt, QTimer, Signal, QUrl
 from datetime import datetime
 from urllib.parse import quote
 from pathlib import Path
@@ -146,17 +147,27 @@ class FlashcardTextEdit(QTextEdit):
         return html
 
 
-class NewCardWindow(QWidget):
+class CardEditorWindow(QWidget):
     # ---------------| Custom signal to update list in main window |--------------- #
     card_added = Signal()
+    card_edited = Signal()
 
-    def __init__(self, deck_name, deck_id, database_manager):
+    def __init__(self, deck_name, deck_id, database_manager,
+                 card_id=None, front_html="", back_html="",
+                 front_image=None, back_image=None):
         super().__init__()
         self.deck_id = deck_id
         self.deck_name = deck_name
         self.database_manager = database_manager
-        self.setWindowTitle("Add New Card")
+        self.card_id = card_id
         self.setMinimumSize(805, 550)
+
+        if self.card_id:
+            self.setWindowTitle("Edit Card")
+            self.status_text = f"Editing card in deck: {self.deck_name}"
+        else:
+            self.setWindowTitle("Add New Card")
+            self.status_text = f"Adding cards to deck: {self.deck_name}"
 
         # -------------------------|text control toolbar|------------------------- #
         self.toolbar_container = QWidget()
@@ -238,7 +249,7 @@ class NewCardWindow(QWidget):
         self.default_format = QTextCharFormat()
         self.default_format.setFontPointSize(20)
 
-        self.status_label = QLabel(f"Adding cards to deck: {self.deck_name}")
+        self.status_label = QLabel(self.status_text)
         self.status_label.setContentsMargins(0, 0, 0, 20)
         self.status_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.status_label.setStyleSheet("font-size: 25px")
@@ -265,14 +276,34 @@ class NewCardWindow(QWidget):
                                            " One image per card side."
                                            " Supported formats: .png, .jpg, .jpeg, .bmp")
 
+        # -------------------------|populate fields if editing|------------------------- #
+        if front_html:
+            self.front_input.setHtml(self.patch_image_paths(front_html, front_image))
+        if back_html:
+            self.back_input.setHtml(self.patch_image_paths(back_html, back_image))
+        if front_image:
+            self.front_input.image_filename = front_image
+        if back_image:
+            self.back_input.image_filename = back_image
+        # ------------------------------------------------------------------------------ #
+
         self.back_label = QLabel("Back")
         self.back_label.setContentsMargins(5, 0, 0, 0)
         self.layout.addWidget(self.back_label)
         self.layout.addWidget(self.back_input)
 
-        self.add_button = QPushButton("Add Card")
-        self.add_button.clicked.connect(self.add_card)
-        self.layout.addWidget(self.add_button)
+        # -------------|dynamically setting save button for saving/editing|--------------#
+        if self.card_id:
+
+            self.save_button = QPushButton("Save Changes")
+            self.save_button.clicked.connect(self.save_card)
+        else:
+            self.save_button = QPushButton("Add Card")
+            self.save_button.clicked.connect(self.save_card)
+
+        self.layout.addWidget(self.save_button)
+
+        # ------------------------------------------------------------------------------ #
 
         self.close_button = QPushButton("Close")
         self.close_button.clicked.connect(self.close_clicked)
@@ -296,7 +327,7 @@ class NewCardWindow(QWidget):
         self.front_input.cursorPositionChanged.connect(lambda: self.reset_typing_format(self.front_input))
         self.back_input.cursorPositionChanged.connect(lambda: self.reset_typing_format(self.back_input))
 
-    def add_card(self):
+    def save_card(self):
         front = self.front_input.toPlainText().strip()
         back = self.back_input.toPlainText().strip()
 
@@ -305,22 +336,28 @@ class NewCardWindow(QWidget):
             return
 
         image_path = self.database_manager.image_folder_path
-
         front_html = self.front_input.finalize_images(image_path)
         back_html = self.back_input.finalize_images(image_path)
 
-        front_image_path = self.front_input.image_filename if self.front_input.image_filename else None
-        back_image_path = self.back_input.image_filename if self.back_input.image_filename else None
+        front_image_path = self.front_input.image_filename or None
+        back_image_path = self.back_input.image_filename or None
 
-        self.database_manager.add_card(self.deck_id, front_html, back_html, front_image_path, back_image_path)
-        self.status_label.setText("Card Added!")
-        self.card_added.emit()
-        QTimer.singleShot(1500, lambda: self.status_label.setText(f"Adding cards to deck: {self.deck_name}"))
-        self.front_input.clear()
-        self.back_input.clear()
+        if self.card_id:
+            self.database_manager.update_card(self.card_id, front_html, back_html, front_image_path, back_image_path)
+            self.status_label.setText("Card Updated!")
+            self.card_edited.emit()
+        else:
+            self.database_manager.add_card(self.deck_id, front_html, back_html, front_image_path, back_image_path)
+            self.status_label.setText("Card Added!")
+            self.card_added.emit()
+            self.front_input.clear()
+            self.back_input.clear()
+            self.front_input.setCurrentCharFormat(self.default_format)
+            self.back_input.setCurrentCharFormat(self.default_format)
 
-        self.front_input.setCurrentCharFormat(self.default_format)
-        self.back_input.setCurrentCharFormat(self.default_format)
+        QTimer.singleShot(1500, lambda: self.status_label.setText(
+            f"{'Editing' if self.card_id else 'Adding'} card in deck: {self.deck_name}"
+        ))
 
     def close_clicked(self):
         self.card_added.emit()
@@ -514,3 +551,16 @@ class NewCardWindow(QWidget):
                 clean_format.setFontUnderline(False)
 
             editor.setCurrentCharFormat(clean_format)
+
+    # --------| method that fixes the html images for the editor window|------------- #
+    def patch_image_paths(self, html, image_filename):
+        if not html:
+            return ""
+        if image_filename:
+            image_path = os.path.join(self.database_manager.image_folder_path, image_filename)
+            if os.path.exists(image_path):
+                image_url = QUrl.fromLocalFile(image_path).toString()
+                html = html.replace(image_filename, image_url)
+            else:
+                html += f"<p><i>Image file '{image_filename}' not found</i></p>"
+        return html
