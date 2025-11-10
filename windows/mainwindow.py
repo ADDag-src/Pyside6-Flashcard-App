@@ -70,7 +70,7 @@ def build_ui():
             }
         """)
 
-    review_deck = QPushButton("Review Deck")
+    review_deck = QPushButton("Review cards")
     review_deck.setStyleSheet("""
         QPushButton {
             color: white;

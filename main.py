@@ -86,7 +86,7 @@ class MainWindow(QMainWindow):
         header.setSectionResizeMode(QHeaderView.Stretch)
         if decks:
             model = QStandardItemModel(len(decks), 4)
-            model.setHorizontalHeaderLabels(["Deck Name", "Total Cards", "Cards to learn", "Due"])
+            model.setHorizontalHeaderLabels(["Deck Name", "Total Cards", "Cards to Learn", "Reviews Due"])
             for row, (deck_id, name, created, total, learn, due) in enumerate(decks):
                 items = [
                     QStandardItem(name),
@@ -101,7 +101,7 @@ class MainWindow(QMainWindow):
             self.deck_list.setModel(model)
         else:
             model = QStandardItemModel(0, 4)
-            model.setHorizontalHeaderLabels(["Deck Name", "Total Cards", "Cards to learn", "Due"])
+            model.setHorizontalHeaderLabels(["Deck Name", "Total Cards", "Cards to Learn", "Reviews Due"])
             self.deck_list.setModel(model)
 
     def get_selected_deck(self):
