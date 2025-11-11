@@ -134,3 +134,24 @@ class DBManager:
             (front, back, front_image_filename, back_image_filename, card_id)
         )
         self.connection.commit()
+
+    def get_new_cards(self, deck_id):
+        self.cursor.execute("""
+              SELECT id, front, back, front_image_filename, back_image_filename
+              FROM cards
+              WHERE deck_id = ? AND status = 'new'
+              ORDER BY created ASC
+          """, (deck_id,))
+        data = self.cursor.fetchall()
+        return [{"id": r[0], "front": r[1], "back": r[2], "front_image": r[3], "back_image": r[4]} for r in data]
+
+    def get_due_cards(self, deck_id):
+        now = datetime.now().isoformat()
+        self.cursor.execute("""
+              SELECT id, front, back, front_image_filename, back_image_filename, next_review
+              FROM cards
+              WHERE deck_id = ? AND next_review IS NOT NULL AND next_review <= ?
+              ORDER BY next_review ASC
+          """, (deck_id, now))
+        data = self.cursor.fetchall()
+        return [{"id": r[0], "front": r[1], "back": r[2], "front_image": r[3], "back_image": r[4], "next_review": r[5]} for r in data]

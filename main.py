@@ -5,6 +5,7 @@ from windows.mainwindow import build_ui
 from database_manager.db_manager import DBManager
 from windows.card_editor_window import CardEditorWindow
 from windows.edit_deck_window import EditDeckWindow
+from windows.study_window import StudyWindow
 
 
 class MainWindow(QMainWindow):
@@ -15,6 +16,8 @@ class MainWindow(QMainWindow):
         self.database_manager = DBManager()
         self.new_card_window = None
         self.deck_edit_window = None
+        self.learn_window = None
+        self.review_window = None
 
         # -------------------------|building main window|------------------------- #
         layout, widgets = build_ui()
@@ -29,6 +32,8 @@ class MainWindow(QMainWindow):
         widgets["del_deck_button"].clicked.connect(self.del_deck)
         widgets["add_card"].clicked.connect(self.add_cards_window)
         widgets["edit_deck"].clicked.connect(self.edit_deck_window)
+        widgets["learn_deck"].clicked.connect(self.learn_deck_window)
+        widgets["review"].clicked.connect(self.review_deck_window)
 
         # -------------------------|main container definition|------------------------- #
         container = QWidget()
@@ -56,13 +61,12 @@ class MainWindow(QMainWindow):
 
     # -------------------------|delete deck method|------------------------- #
     def del_deck(self):
-        selected_indexes = self.deck_list.selectionModel().selectedRows()
-        if not selected_indexes:
-            QMessageBox.information(self, "No Selection", "Please select a deck to delete.")
+        deck_details = self.get_selected_deck()
+        if not deck_details:
             return
-        selected_row = selected_indexes[0].row()
-        deck_name = self.deck_list.model().item(selected_row, 0).text()
-        deck_id = self.database_manager.get_deck_id_by_name(deck_name)
+
+        deck_name, deck_id = deck_details
+
         if deck_id is None:
             QMessageBox.warning(self, "Error", f"Deck '{deck_name}' not found in database.")
             return
@@ -119,7 +123,8 @@ class MainWindow(QMainWindow):
         if not deck_details:
             return
 
-        self.new_card_window = CardEditorWindow(deck_details[0], deck_details[1], self.database_manager)
+        deck_name, deck_id = deck_details
+        self.new_card_window = CardEditorWindow(deck_name, deck_id, self.database_manager)
 
         # -------------------------|signal that a card was added in the add card window|------------------------- #
         self.new_card_window.card_added.connect(self.refresh_deck_list)
@@ -130,11 +135,42 @@ class MainWindow(QMainWindow):
         if not deck_details:
             return
 
-        self.deck_edit_window = EditDeckWindow(deck_details[0], deck_details[1], self.database_manager)
+        deck_name, deck_id = deck_details
+        self.deck_edit_window = EditDeckWindow(deck_name, deck_id, self.database_manager)
 
         # -------------------------|signal that an edit happened in deck edit window|------------------------- #
         self.deck_edit_window.deck_edited.connect(self.refresh_deck_list)
         self.deck_edit_window.show()
+
+    def learn_deck_window(self):
+        deck_details = self.get_selected_deck()
+        if not deck_details:
+            return
+
+        deck_name, deck_id = deck_details
+
+        cards = self.database_manager.get_new_cards(deck_id)
+        if not cards:
+            QMessageBox.information(self, "No Cards", f"No new cards to learn in '{deck_name}'.")
+            return
+
+        self.learn_window = StudyWindow(deck_name, deck_id, self.database_manager, "learn", cards)
+        self.learn_window.show()
+
+    def review_deck_window(self):
+        deck_details = self.get_selected_deck()
+        if not deck_details:
+            return
+
+        deck_name, deck_id = deck_details
+
+        cards = self.database_manager.get_due_cards(deck_id)
+        # if not cards:
+        #     QMessageBox.information(self, "No Cards", f"No cards are due for review in '{deck_name}'.")
+        #     return
+
+        self.review_window = StudyWindow(deck_name, deck_id, self.database_manager, "review", cards)
+        self.review_window.show()
 
 
 app = QApplication([])
