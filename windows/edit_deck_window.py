@@ -15,6 +15,7 @@ class EditDeckWindow(QWidget):
 
     def __init__(self, deck_name, deck_id, database_manager):
         super().__init__()
+        self.setWindowModality(Qt.ApplicationModal)
         self.deck_id = deck_id
         self.deck_name = deck_name
         self.editor = None

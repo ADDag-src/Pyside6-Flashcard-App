@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 class DBManager:
@@ -155,3 +155,17 @@ class DBManager:
           """, (deck_id, now))
         data = self.cursor.fetchall()
         return [{"id": r[0], "front": r[1], "back": r[2], "front_image": r[3], "back_image": r[4], "next_review": r[5]} for r in data]
+
+    def mark_card_learned(self, card_id, deck_id):
+        #next_review = (datetime.now() + timedelta(days=1)).isoformat()
+        next_review = (datetime.now() + timedelta(seconds=5)).isoformat()   # testing
+        self.cursor.execute(
+            """
+            UPDATE cards
+            SET status = 'review', review_stage = 1, next_review = ?
+            WHERE id = ? AND deck_id = ?
+            """,
+            (next_review, card_id, deck_id)
+        )
+        self.connection.commit()
+        self.update_deck_stats(deck_id)

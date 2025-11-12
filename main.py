@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QInputDialog, QMessageBox, QHeaderView
 from PySide6.QtGui import QStandardItemModel, QStandardItem
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from windows.mainwindow import build_ui
 from database_manager.db_manager import DBManager
 from windows.card_editor_window import CardEditorWindow
@@ -18,6 +18,12 @@ class MainWindow(QMainWindow):
         self.deck_edit_window = None
         self.learn_window = None
         self.review_window = None
+
+        # -------------------------|timer to refresh list periodically|------------------------- #
+
+        self.stats_timer = QTimer(self)
+        self.stats_timer.timeout.connect(self.refresh_all_deck_stats)
+        self.stats_timer.start(2000)
 
         # -------------------------|building main window|------------------------- #
         layout, widgets = build_ui()
@@ -88,25 +94,32 @@ class MainWindow(QMainWindow):
         header.setSectionsClickable(False)
         header.setHighlightSections(False)
         header.setSectionResizeMode(QHeaderView.Stretch)
-        if decks:
+
+        model = self.deck_list.model()
+
+        if not model or model.rowCount() != len(decks):
             model = QStandardItemModel(len(decks), 4)
             model.setHorizontalHeaderLabels(["Deck Name", "Total Cards", "Cards to Learn", "Reviews Due"])
-            for row, (deck_id, name, created, total, learn, due) in enumerate(decks):
-                items = [
-                    QStandardItem(name),
-                    QStandardItem(str(total)),
-                    QStandardItem(str(learn)),
-                    QStandardItem(str(due))
-                ]
-                for col, item in enumerate(items):
+            self.deck_list.setModel(model)
+
+        for row, (deck_id, name, created, total, learn, due) in enumerate(decks):
+            values = [name, str(total), str(learn), str(due)]
+            for col, val in enumerate(values):
+                item = model.item(row, col)
+                if item is None:
+                    item = QStandardItem(val)
                     item.setTextAlignment(Qt.AlignCenter)
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                     model.setItem(row, col, item)
-            self.deck_list.setModel(model)
-        else:
-            model = QStandardItemModel(0, 4)
-            model.setHorizontalHeaderLabels(["Deck Name", "Total Cards", "Cards to Learn", "Reviews Due"])
-            self.deck_list.setModel(model)
+                else:
+                    item.setText(val)
+
+    def refresh_all_deck_stats(self):
+        decks = self.database_manager.get_all_decks()
+        for deck in decks:
+            deck_id = deck[0]
+            self.database_manager.update_deck_stats(deck_id)
+        self.refresh_deck_list()
 
     def get_selected_deck(self):
         selected_indexes = self.deck_list.selectionModel().selectedRows()
@@ -155,6 +168,10 @@ class MainWindow(QMainWindow):
             return
 
         self.learn_window = StudyWindow(deck_name, deck_id, self.database_manager, "learn", cards)
+
+        # -------------------------|signal that an card status changed in learn window|------------------------- #
+        self.learn_window.card_stats_changed.connect(self.refresh_deck_list)
+
         self.learn_window.show()
 
     def review_deck_window(self):
@@ -165,9 +182,9 @@ class MainWindow(QMainWindow):
         deck_name, deck_id = deck_details
 
         cards = self.database_manager.get_due_cards(deck_id)
-        # if not cards:
-        #     QMessageBox.information(self, "No Cards", f"No cards are due for review in '{deck_name}'.")
-        #     return
+        if not cards:
+            QMessageBox.information(self, "No Cards", f"No cards are due for review in '{deck_name}'.")
+            return
 
         self.review_window = StudyWindow(deck_name, deck_id, self.database_manager, "review", cards)
         self.review_window.show()

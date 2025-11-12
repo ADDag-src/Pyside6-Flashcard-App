@@ -156,6 +156,7 @@ class CardEditorWindow(QWidget):
                  card_id=None, front_html="", back_html="",
                  front_image=None, back_image=None):
         super().__init__()
+        self.setWindowModality(Qt.ApplicationModal)
         self.deck_id = deck_id
         self.deck_name = deck_name
         self.database_manager = database_manager

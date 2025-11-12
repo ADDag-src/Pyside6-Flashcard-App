@@ -1,19 +1,24 @@
 import os
+from collections import deque
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QTextBrowser, QComboBox, QSizePolicy,
                                QPushButton, QMessageBox, QHBoxLayout, QFontComboBox)
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import Qt, QUrl, Signal
 
 
 class StudyWindow(QWidget):
+    # ---------------| Custom signal to update list in main window |--------------- #
+    card_stats_changed = Signal()
+
     def __init__(self, deck_name, deck_id, database_manager, mode, cards):
         super().__init__()
+        self.setWindowModality(Qt.ApplicationModal)
         self.deck_id = deck_id
         self.deck_name = deck_name
         self.database_manager = database_manager
         self.mode = mode
-        self.cards = cards
+        self.cards = deque(cards)
         self.total_cards = len(self.cards)
-        self.counter = 0
+        self.completed_count = 0
         self.showing_front = True
 
         self.setMinimumSize(805, 550)
@@ -22,11 +27,11 @@ class StudyWindow(QWidget):
         if self.mode == "learn":
             self.setWindowTitle(f"Learning new cards")
             self.label_text = f"Learning new cards in deck: {self.deck_name}"
-            self.remaining_cards_text = f"{self.counter}/{self.total_cards} remaining to learn"
+            self.remaining_cards_text = f"{self.completed_count}/{self.total_cards} cards learned"
         else:
             self.setWindowTitle(f"Reviewing cards")
             self.label_text = f"Reviewing cards in deck: {self.deck_name}"
-            self.remaining_cards_text = f"{self.counter}/{self.total_cards} remaining to review"
+            self.remaining_cards_text = f"{self.completed_count}/{self.total_cards} cards reviewed"
 
         # ----| UI layout |---- #
         self.layout = QVBoxLayout()
@@ -42,7 +47,7 @@ class StudyWindow(QWidget):
         self.layout.addWidget(self.remaining_label)
 
         self.side_label = QLabel("Front")
-        self.side_label.setAlignment(Qt.AlignRight)
+        self.side_label.setAlignment(Qt.AlignCenter)
         self.side_label.setStyleSheet("color: gray; font-size: 14px;")
         self.layout.addWidget(self.side_label)
 
@@ -62,9 +67,11 @@ class StudyWindow(QWidget):
         if self.mode == "learn":
             self.again_button = QPushButton("Show me again")
             choice_layout.addWidget(self.again_button)
+            self.again_button.clicked.connect(self.repeat_card)
 
             self.learned_button = QPushButton("Learned it")
             choice_layout.addWidget(self.learned_button)
+            self.learned_button.clicked.connect(self.next_card)
         else:
             self.choice_label = QLabel("How well did you remember this card?:")
             choice_layout.addWidget(self.choice_label)
@@ -85,18 +92,22 @@ class StudyWindow(QWidget):
         choice_layout.setSpacing(20)
         
         self.layout.addWidget(self.choice_widget)
-        self.choice_widget.hide()
+
+        self.close_button = QPushButton("Close")
+        self.close_button.clicked.connect(self.close_clicked)
+        self.close_button.hide()
+        self.layout.addWidget(self.close_button)
 
         self.setLayout(self.layout)
         self.show_card()
 
     def show_card(self):
-        if self.counter < self.total_cards:
-            card = self.cards[self.counter]
+        if self.cards:
+            card = self.cards[0]
             front_html = self.patch_image_paths(card["front"], card.get("front_image"))
             self.card_screen.setHtml(front_html)
             self.show_answer_button.setText("Show Answer")
-            self.choice_widget.hide()
+            self.choice_widget.setEnabled(False)
             self.side_label.setText("Front")
             self.showing_front = True
         else:
@@ -105,25 +116,57 @@ class StudyWindow(QWidget):
                     <b>All cards completed! Well Done!</b>
                 </div>
             """)
-            self.show_answer_button.setEnabled(False)
+            self.show_answer_button.hide()
             self.choice_widget.hide()
+            self.close_button.show()
 
     def flip_card(self):
-        if self.counter < self.total_cards:
-            card = self.cards[self.counter]
+        if self.cards:
+            card = self.cards[0]
             if self.showing_front:
                 back_html = self.patch_image_paths(card["back"], card.get("back_image"))
                 self.show_answer_button.setText("Show Question")
                 self.card_screen.setHtml(back_html)
-                self.choice_widget.show()
+                self.choice_widget.setEnabled(True)
                 self.side_label.setText("Back")
             else:
                 front_html = self.patch_image_paths(card["front"], card.get("front_image"))
                 self.show_answer_button.setText("Show Answer")
                 self.card_screen.setHtml(front_html)
-                self.choice_widget.hide()
+                self.choice_widget.setEnabled(False)
                 self.side_label.setText("Front")
             self.showing_front = not self.showing_front
+
+    def next_card(self):
+        if self.cards:
+            card = self.cards.popleft()
+            self.completed_count += 1
+
+            if self.mode == "learn":
+                self.database_manager.mark_card_learned(card["id"], self.deck_id)
+                self.card_stats_changed.emit()
+
+            self.update_progress_label()
+            self.show_card()
+
+    def repeat_card(self):
+        if self.cards:
+            card = self.cards.popleft()
+            self.cards.append(card)
+            self.update_progress_label()
+            self.show_card()
+
+    def update_progress_label(self):
+        if self.mode == "learn":
+            self.remaining_label.setText(
+                f"{self.completed_count}/{self.total_cards} cards learned")
+        else:
+            self.remaining_label.setText(
+                f"{self.completed_count}/{self.total_cards} cards reviewed")
+
+    def close_clicked(self):
+        self.card_stats_changed.emit()
+        self.close()
 
     # --------| method that fixes the html images to correctly show|------------- #
     def patch_image_paths(self, html, image_filename):
