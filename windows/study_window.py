@@ -123,6 +123,12 @@ class StudyWindow(QWidget):
     def flip_card(self):
         if self.cards:
             card = self.cards[0]
+            card_stats = self.database_manager.get_sm2_intervals(card["id"])
+            if card_stats:
+                self.easy_button.setText(f"Easy ({card_stats['easy_interval']:.1f})")
+                self.good_button.setText(f"Good ({card_stats['good_interval']:.1f})")
+                self.hard_button.setText(f"Hard ({card_stats['hard_interval']:.1f})")
+
             if self.showing_front:
                 back_html = self.patch_image_paths(card["back"], card.get("back_image"))
                 self.show_answer_button.setText("Show Question")
@@ -140,12 +146,10 @@ class StudyWindow(QWidget):
     def next_card(self):
         if self.cards:
             card = self.cards.popleft()
-            self.completed_count += 1
-
             if self.mode == "learn":
                 self.database_manager.mark_card_learned(card["id"], self.deck_id)
                 self.card_stats_changed.emit()
-
+                self.completed_count += 1
             self.update_progress_label()
             self.show_card()
 

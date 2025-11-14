@@ -40,7 +40,9 @@ class DBManager:
                 back_image_filename  TEXT,
                 status TEXT NOT NULL DEFAULT 'new',
                 next_review TEXT,
-                review_stage INTEGER DEFAULT 0,
+                repetition INTEGER DEFAULT 0,      
+                interval INTEGER DEFAULT 0,         
+                ease_factor REAL DEFAULT 2.5, 
                 created TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(deck_id) REFERENCES decks(id) ON DELETE CASCADE
             )
@@ -101,10 +103,14 @@ class DBManager:
         now = datetime.now().isoformat()
         self.cursor.execute(
             """
-            INSERT INTO cards (deck_id, front, back, front_image_filename, back_image_filename, status, review_stage, next_review, created)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO cards (
+                deck_id, front, back, front_image_filename, back_image_filename,
+                status, next_review, repetition, interval, ease_factor, created
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (deck_id, front, back, front_image_filename, back_image_filename, 'new', 0, None, now)
+            (deck_id, front, back, front_image_filename, back_image_filename,
+             'new', None, 0, 0, 2.5, now)
         )
         self.connection.commit()
         self.update_deck_stats(deck_id)
@@ -157,15 +163,92 @@ class DBManager:
         return [{"id": r[0], "front": r[1], "back": r[2], "front_image": r[3], "back_image": r[4], "next_review": r[5]} for r in data]
 
     def mark_card_learned(self, card_id, deck_id):
-        #next_review = (datetime.now() + timedelta(days=1)).isoformat()
-        next_review = (datetime.now() + timedelta(seconds=5)).isoformat()   # testing
+        interval = 1
+        #next_review = (datetime.now() + timedelta(days=interval)).isoformat()
+        next_review = (datetime.now() + timedelta(seconds=interval)).isoformat()  # testing
         self.cursor.execute(
             """
             UPDATE cards
-            SET status = 'review', review_stage = 1, next_review = ?
+            SET status = 'review',
+                repetition = 0,
+                interval = 1,
+                ease_factor = 2.5,
+                next_review = ?
             WHERE id = ? AND deck_id = ?
             """,
             (next_review, card_id, deck_id)
+        )
+        self.connection.commit()
+        self.update_deck_stats(deck_id)
+
+    def get_sm2_intervals(self, card_id):
+        self.cursor.execute(
+            """
+              SELECT repetition, interval, ease_factor, next_review
+              FROM cards
+              WHERE id = ? 
+                      
+            """,
+            (card_id,)
+        )
+        data = self.cursor.fetchone()
+        card_stats = {"repetition": data[0], "interval": data[1], "ease_factor": data[2]}
+
+        if card_stats["repetition"] <= 2:
+            return False
+
+        card_grades = [3, 4, 5]
+        new_intervals = []
+        for grade in card_grades:
+            new_ease_factor = card_stats["ease_factor"] + (0.1 - (5 - grade) * (0.08 + (5 - grade) * 0.02))
+            new_ease_factor = max(1.3, new_ease_factor)
+
+            interval = card_stats["interval"] * new_ease_factor
+            new_intervals.append(interval)
+
+        return {"hard_interval": new_intervals[0], "good_interval": new_intervals[1], "easy_interval": new_intervals[2]}
+
+    def update_card_sm2(self, card_id, grade, deck_id):
+        self.cursor.execute(
+            """
+              SELECT repetition, interval, ease_factor, next_review
+              FROM cards
+              WHERE id = ? 
+
+            """,
+            (card_id,)
+        )
+
+        data = self.cursor.fetchone()
+        repetition, interval, ease_factor = data
+
+        if grade < 3:
+            repetition = 0
+            interval = 1
+            ease_factor = max(1.3, ease_factor)
+        else:
+            if repetition == 0:
+                interval = 1
+            elif repetition == 1:
+                interval = 6
+            else:
+                ease_factor = ease_factor + (0.1 - (5 - grade) * (0.08 + (5 - grade) * 0.02))
+                ease_factor = max(1.3, ease_factor)
+                interval = round(interval * ease_factor)
+            repetition += 1
+
+        # next_review = (datetime.now() + timedelta(days=interval)).isoformat()
+        next_review = (datetime.now() + timedelta(seconds=interval)).isoformat()   # testing
+        self.cursor.execute(
+            """
+            UPDATE cards
+            SET repetition = ?,
+                interval = ?,
+                ease_factor = ?,
+                next_review = ?
+            WHERE id = ?
+            """,
+            (repetition, interval, ease_factor, next_review, card_id)
         )
         self.connection.commit()
         self.update_deck_stats(deck_id)
