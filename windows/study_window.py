@@ -67,7 +67,7 @@ class StudyWindow(QWidget):
         if self.mode == "learn":
             self.again_button = QPushButton("Show me again")
             choice_layout.addWidget(self.again_button)
-            self.again_button.clicked.connect(self.repeat_card)
+            self.again_button.clicked.connect(lambda: self.next_card(repeat=True))
 
             self.learned_button = QPushButton("Learned it")
             choice_layout.addWidget(self.learned_button)
@@ -78,15 +78,19 @@ class StudyWindow(QWidget):
 
             self.again_button = QPushButton("Wrong, show me again")
             choice_layout.addWidget(self.again_button)
+            self.again_button.clicked.connect(lambda: self.next_card(repeat=True))
 
             self.hard_button = QPushButton("Hard")
             choice_layout.addWidget(self.hard_button)
+            self.hard_button.clicked.connect(lambda: self.next_card(grade=3))
 
             self.good_button = QPushButton("Good")
             choice_layout.addWidget(self.good_button)
+            self.good_button.clicked.connect(lambda: self.next_card(grade=4))
 
             self.easy_button = QPushButton("Easy")
             choice_layout.addWidget(self.easy_button)
+            self.easy_button.clicked.connect(lambda: self.next_card(grade=5))
 
         choice_layout.addStretch()
         choice_layout.setSpacing(20)
@@ -125,9 +129,9 @@ class StudyWindow(QWidget):
             card = self.cards[0]
             card_stats = self.database_manager.get_sm2_intervals(card["id"])
             if card_stats:
-                self.easy_button.setText(f"Easy ({card_stats['easy_interval']:.1f})")
-                self.good_button.setText(f"Good ({card_stats['good_interval']:.1f})")
-                self.hard_button.setText(f"Hard ({card_stats['hard_interval']:.1f})")
+                self.hard_button.setText(f"Hard ({card_stats['hard_interval']} days)")
+                self.good_button.setText(f"Good ({card_stats['good_interval']} days)")
+                self.easy_button.setText(f"Easy ({card_stats['easy_interval']} days)")
 
             if self.showing_front:
                 back_html = self.patch_image_paths(card["back"], card.get("back_image"))
@@ -143,22 +147,32 @@ class StudyWindow(QWidget):
                 self.side_label.setText("Front")
             self.showing_front = not self.showing_front
 
-    def next_card(self):
-        if self.cards:
-            card = self.cards.popleft()
-            if self.mode == "learn":
-                self.database_manager.mark_card_learned(card["id"], self.deck_id)
-                self.card_stats_changed.emit()
-                self.completed_count += 1
-            self.update_progress_label()
-            self.show_card()
+    def next_card(self, grade=None, repeat=False):
+        if not self.cards:
+            return
 
-    def repeat_card(self):
-        if self.cards:
-            card = self.cards.popleft()
-            self.cards.append(card)
-            self.update_progress_label()
-            self.show_card()
+        card = self.cards.popleft()
+
+        if self.mode == "learn":
+            if repeat:
+                self.cards.append(card)
+            else:
+                self.database_manager.update_card_sm2(card["id"], grade=3, deck_id=self.deck_id)
+                self.completed_count += 1
+                self.card_stats_changed.emit()
+
+        elif self.mode == "review":
+            if repeat:
+                self.cards.append(card)
+                self.database_manager.update_card_sm2(card["id"], grade=1, deck_id=self.deck_id)
+                self.card_stats_changed.emit()
+            else:
+                self.database_manager.update_card_sm2(card["id"], grade=grade, deck_id=self.deck_id)
+                self.completed_count += 1
+                self.card_stats_changed.emit()
+
+        self.update_progress_label()
+        self.show_card()
 
     def update_progress_label(self):
         if self.mode == "learn":
