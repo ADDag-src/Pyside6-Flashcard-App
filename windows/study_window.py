@@ -114,6 +114,11 @@ class StudyWindow(QWidget):
             self.choice_widget.setEnabled(False)
             self.side_label.setText("Front")
             self.showing_front = True
+
+            if self.mode == "review":
+                self.hard_button.setText("Hard [—]")
+                self.good_button.setText("Good [—]")
+                self.easy_button.setText("Easy [—]")
         else:
             self.card_screen.setHtml("""
                 <div style="text-align:center; margin-top:40px; font-size:24px; color:#3d99f5;">
@@ -129,9 +134,17 @@ class StudyWindow(QWidget):
             card = self.cards[0]
             card_stats = self.database_manager.get_sm2_intervals(card["id"])
             if card_stats:
-                self.hard_button.setText(f"Hard ({card_stats['hard_interval']} days)")
-                self.good_button.setText(f"Good ({card_stats['good_interval']} days)")
-                self.easy_button.setText(f"Easy ({card_stats['easy_interval']} days)")
+                for key in card_stats:
+                    interval = int(card_stats[key])
+                    if interval < 365:
+                        card_stats[key] = f"{interval} day(s)"
+                    else:
+                        years = interval / 365
+                        card_stats[key] = f"{years:.1f} year(s)"
+
+                self.hard_button.setText(f"Hard [{card_stats['hard_interval']}]")
+                self.good_button.setText(f"Good [{card_stats['good_interval']}]")
+                self.easy_button.setText(f"Easy [{card_stats['easy_interval']}]")
 
             if self.showing_front:
                 back_html = self.patch_image_paths(card["back"], card.get("back_image"))
@@ -139,12 +152,15 @@ class StudyWindow(QWidget):
                 self.card_screen.setHtml(back_html)
                 self.choice_widget.setEnabled(True)
                 self.side_label.setText("Back")
+                self.set_card_background(False)
             else:
                 front_html = self.patch_image_paths(card["front"], card.get("front_image"))
                 self.show_answer_button.setText("Show Answer")
                 self.card_screen.setHtml(front_html)
                 self.choice_widget.setEnabled(False)
                 self.side_label.setText("Front")
+                self.set_card_background(True)
+
             self.showing_front = not self.showing_front
 
     def next_card(self, grade=None, repeat=False):
@@ -171,6 +187,7 @@ class StudyWindow(QWidget):
                 self.completed_count += 1
                 self.card_stats_changed.emit()
 
+        self.set_card_background(True)
         self.update_progress_label()
         self.show_card()
 
@@ -184,7 +201,14 @@ class StudyWindow(QWidget):
 
     def close_clicked(self):
         self.card_stats_changed.emit()
+        self.set_card_background(True)
         self.close()
+
+    def set_card_background(self, is_front):
+        if is_front:
+            self.card_screen.setStyleSheet("background-color: #2d2d2d;")
+        else:
+            self.card_screen.setStyleSheet("background-color: #3B3B3B;")
 
     # --------| method that fixes the html images to correctly show|------------- #
     def patch_image_paths(self, html, image_filename):
