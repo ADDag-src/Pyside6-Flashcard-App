@@ -1,5 +1,8 @@
+import os
+import sys
+
 from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QInputDialog, QMessageBox, QHeaderView
-from PySide6.QtGui import QStandardItemModel, QStandardItem
+from PySide6.QtGui import QStandardItemModel, QStandardItem, QIcon
 from PySide6.QtCore import Qt, QTimer
 from windows.mainwindow import build_ui
 from database_manager.db_manager import DBManager
@@ -18,6 +21,10 @@ class MainWindow(QMainWindow):
         self.deck_edit_window = None
         self.learn_window = None
         self.review_window = None
+
+        status = self.statusBar()
+        status.setStyleSheet("color: #3B3B3B;")
+        status.showMessage("Flashcard App by ADDag-src")
 
         # -------------------------|timer to refresh list periodically|------------------------- #
 
@@ -190,8 +197,19 @@ class MainWindow(QMainWindow):
         self.review_window.show()
 
 
+# -------------------------|Icon path handling for packaging|------------------------- #
+if getattr(sys, "_MEIPASS", None):
+    base_path = sys._MEIPASS
+else:
+    base_path = os.path.abspath(os.path.dirname(__file__))
+
+icon_file = "app-icon.ico" if sys.platform.startswith("win") else "app-icon.png"
+icon_path = os.path.join(base_path, "icons", icon_file)
+
+
 app = QApplication([])
 app.setStyle("Fusion")
+app.setWindowIcon(QIcon(icon_path))
 window = MainWindow()
 window.show()
 app.exec()

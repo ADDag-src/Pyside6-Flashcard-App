@@ -24,7 +24,7 @@ class EditDeckWindow(QWidget):
         self.setMinimumSize(805, 550)
         self.layout = QVBoxLayout()
 
-    # -------------------------|layout setup|------------------------- #
+        # -------------------------|layout setup|------------------------- #
         self.deck_name_label = QLabel(f"Editing deck: {self.deck_name}")
         self.deck_name_label.setContentsMargins(0, 0, 0, 20)
         self.deck_name_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)

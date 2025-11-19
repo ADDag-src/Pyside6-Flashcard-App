@@ -202,8 +202,8 @@ class DBManager:
             repetition = 0
             interval = 1
             ease_factor = 2.5
-            next_review = (datetime.now() + timedelta(seconds=interval)).isoformat()  # testing
-            #next_review = (datetime.now() + timedelta(days=interval)).isoformat()
+            # next_review = (datetime.now() + timedelta(seconds=interval)).isoformat()  # testing
+            next_review = (datetime.now() + timedelta(days=interval)).isoformat()
             status = "review"
         else:
             if grade < 3:
@@ -220,8 +220,8 @@ class DBManager:
                     ease_factor = max(1.3, ease_factor)
                     interval = round(interval * ease_factor)
                 repetition += 1
-            next_review = (datetime.now() + timedelta(seconds=interval)).isoformat()  # testing
-            # next_review = (datetime.now() + timedelta(days=interval)).isoformat()
+            #  next_review = (datetime.now() + timedelta(seconds=interval)).isoformat()  # testing
+            next_review = (datetime.now() + timedelta(days=interval)).isoformat()
 
         self.cursor.execute(
             """

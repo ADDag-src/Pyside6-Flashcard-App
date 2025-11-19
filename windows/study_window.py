@@ -1,7 +1,7 @@
 import os
 from collections import deque
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QTextBrowser, QComboBox, QSizePolicy,
-                               QPushButton, QMessageBox, QHBoxLayout, QFontComboBox)
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QTextBrowser,
+                               QPushButton, QHBoxLayout)
 from PySide6.QtCore import Qt, QUrl, Signal
 
 
@@ -20,7 +20,6 @@ class StudyWindow(QWidget):
         self.total_cards = len(self.cards)
         self.completed_count = 0
         self.showing_front = True
-
         self.setMinimumSize(805, 550)
 
         # ----|text modularity setup for learn/review |---- #
