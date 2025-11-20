@@ -24,7 +24,7 @@ class MainWindow(QMainWindow):
 
         status = self.statusBar()
         status.setStyleSheet("color: #3B3B3B;")
-        status.showMessage("Flashcard App by ADDag-src")
+        status.showMessage("by ADDag-src")
 
         # -------------------------|timer to refresh list periodically|------------------------- #
 
