@@ -220,7 +220,7 @@ class DBManager:
                     ease_factor = max(1.3, ease_factor)
                     interval = round(interval * ease_factor)
                 repetition += 1
-            #  next_review = (datetime.now() + timedelta(seconds=interval)).isoformat()  # testing
+            # next_review = (datetime.now() + timedelta(seconds=interval)).isoformat()  # testing
             next_review = (datetime.now() + timedelta(days=interval)).isoformat()
 
         self.cursor.execute(
