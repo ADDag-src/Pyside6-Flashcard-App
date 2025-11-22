@@ -126,9 +126,28 @@ class DBManager:
     def delete_cards(self, deck_id, card_ids):
         if not card_ids:
             return
+
+        self.cursor.execute(
+            "SELECT front_image_filename, back_image_filename FROM cards WHERE id IN ({})".format(
+                ",".join("?" * len(card_ids))
+            ),
+            card_ids
+        )
+        image_files = self.cursor.fetchall()
+
         self.cursor.executemany("DELETE FROM cards where id=?", [(card_id,) for card_id in card_ids])
         self.connection.commit()
         self.update_deck_stats(deck_id)
+
+        for front_img, back_img in image_files:
+            for img in (front_img, back_img):
+                if img:
+                    img_path = os.path.join(self.image_folder_path, img)
+                    try:
+                        if os.path.exists(img_path):
+                            os.remove(img_path)
+                    except Exception as e:
+                        print(f"Could not delete image {img_path}: {e}")
 
     def update_card(self, card_id, front, back, front_image_filename=None, back_image_filename=None):
         self.cursor.execute(
